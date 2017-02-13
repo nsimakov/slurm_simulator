@@ -3,6 +3,7 @@
 *.lo
 .deps
 .libs
+.project
 Makefile
 autom4te.cache
 /config.h
