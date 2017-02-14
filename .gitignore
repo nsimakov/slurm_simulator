@@ -4,6 +4,9 @@
 .deps
 .libs
 .project
+.autotools
+.cproject
+.settings/
 Makefile
 autom4te.cache
 /config.h
