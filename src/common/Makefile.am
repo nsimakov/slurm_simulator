@@ -16,6 +16,13 @@ noinst_PROGRAMS = libcommon.o libeio.o libspank.o
 # This is needed if compiling on windows
 EXEEXT=
 
+if ENABLE_SIMULATOR
+	SIMULATOR_FILES = sim_funcs.c sim_funcs.h
+else
+	SIMULATOR_FILES =
+endif
+
+
 noinst_LTLIBRARIES = 			\
 	libcommon.la 			\
 	libdaemonize.la 		\
@@ -122,7 +129,8 @@ libcommon_la_SOURCES = 			\
 	xcgroup_read_config.c xcgroup_read_config.h \
 	xlua.c xlua.h			\
 	callerid.c callerid.h		\
-	slurm_persist_conn.c slurm_persist_conn.h
+	slurm_persist_conn.c slurm_persist_conn.h \
+	$(SIMULATOR_FILES)
 
 EXTRA_libcommon_la_SOURCES = 		\
 	uthash/LICENSE			\

@@ -373,6 +373,11 @@ else
   AC_MSG_RESULT([no])
 fi
 
+dnl
+dnl Check if slurm compiled in simulation mode:
+dnl
+X_AC_SIMULATOR
+
 
 savedLIBS="$LIBS"
 savedCFLAGS="$CFLAGS"

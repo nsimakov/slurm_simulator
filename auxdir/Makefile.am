@@ -34,6 +34,7 @@ EXTRA_DIST = \
     x_ac_printf_null.m4 \
     x_ac_ptrace.m4 \
     x_ac_readline.m4 \
+    x_ac_simulator.m4 \
     x_ac_setproctitle.m4 \
     x_ac_sgi_job.m4 \
     x_ac_slurm_ssl.m4
