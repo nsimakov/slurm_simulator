@@ -608,7 +608,7 @@
 /* Define Slurm installation prefix */
 #undef SLURM_PREFIX
 
-/* Define to 1 if running slurm simulator */
+/* Define SLURM_SIMULATOR if you are building slurm in simulator mode. */
 #undef SLURM_SIMULATOR
 
 /* SLURM Version Number */

@@ -6,10 +6,18 @@ CLEANFILES = core.*
 
 AM_CPPFLAGS = -I$(top_srcdir) $(BG_INCLUDES)
 
+if ENABLE_SIMULATOR
+	SIMULATOR_FILES = simulator.c
+else
+	SIMULATOR_FILES =
+endif
+
+
 # noinst_LTLIBRARIES = libslurmctld.la
 # libslurmctld_la_LDFLAGS  = $(LIB_LDFLAGS) -module --export-dynamic
 # libslurmctld_la_SOURCES =
 slurmctld_SOURCES =     \
+	$(SIMULATOR_FILES) \
 	acct_policy.c	\
 	acct_policy.h	\
 	agent.c  	\
