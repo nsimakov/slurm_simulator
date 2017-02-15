@@ -600,6 +600,9 @@ int main(int argc, char **argv)
   		 */
 		start_power_mgr(&slurmctld_config.thread_id_power);
 
+#ifdef SLURM_SIMULATOR
+		sim_controller();
+#endif
 		/*
 		 * process slurm background activities, could run as pthread
 		 */
