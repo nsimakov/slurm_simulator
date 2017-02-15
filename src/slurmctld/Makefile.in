@@ -92,6 +92,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
+@ENABLE_SIMULATOR_TRUE@am__append_1 = simulator.c
 sbin_PROGRAMS = slurmctld$(EXEEXT)
 subdir = src/slurmctld
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -149,6 +150,20 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(sbindir)"
 PROGRAMS = $(sbin_PROGRAMS)
+am__slurmctld_SOURCES_DIST = acct_policy.c acct_policy.h agent.c \
+	agent.h backup.c burst_buffer.c burst_buffer.h controller.c \
+	front_end.c front_end.h gang.c gang.h groups.c groups.h \
+	job_mgr.c job_scheduler.c job_scheduler.h job_submit.c \
+	job_submit.h licenses.c licenses.h locks.c locks.h node_mgr.c \
+	node_scheduler.c node_scheduler.h partition_mgr.c ping_nodes.c \
+	ping_nodes.h port_mgr.c port_mgr.h power_save.c power_save.h \
+	powercapping.c powercapping.h preempt.c preempt.h proc_req.c \
+	proc_req.h read_config.c read_config.h reservation.c \
+	reservation.h sched_plugin.c sched_plugin.h slurmctld.h \
+	slurmctld_plugstack.c slurmctld_plugstack.h srun_comm.c \
+	srun_comm.h state_save.c state_save.h statistics.c step_mgr.c \
+	trigger_mgr.c trigger_mgr.h simulator.c
+@ENABLE_SIMULATOR_TRUE@am__objects_1 = simulator.$(OBJEXT)
 am_slurmctld_OBJECTS = acct_policy.$(OBJEXT) agent.$(OBJEXT) \
 	backup.$(OBJEXT) burst_buffer.$(OBJEXT) controller.$(OBJEXT) \
 	front_end.$(OBJEXT) gang.$(OBJEXT) groups.$(OBJEXT) \
@@ -160,7 +175,7 @@ am_slurmctld_OBJECTS = acct_policy.$(OBJEXT) agent.$(OBJEXT) \
 	read_config.$(OBJEXT) reservation.$(OBJEXT) \
 	sched_plugin.$(OBJEXT) slurmctld_plugstack.$(OBJEXT) \
 	srun_comm.$(OBJEXT) state_save.$(OBJEXT) statistics.$(OBJEXT) \
-	step_mgr.$(OBJEXT) trigger_mgr.$(OBJEXT)
+	step_mgr.$(OBJEXT) trigger_mgr.$(OBJEXT) $(am__objects_1)
 slurmctld_OBJECTS = $(am_slurmctld_OBJECTS)
 am__DEPENDENCIES_1 =
 slurmctld_DEPENDENCIES = $(top_builddir)/src/common/libdaemonize.la \
@@ -207,7 +222,7 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(slurmctld_SOURCES)
-DIST_SOURCES = $(slurmctld_SOURCES)
+DIST_SOURCES = $(am__slurmctld_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -500,65 +515,19 @@ AM_CPPFLAGS = -I$(top_srcdir) $(BG_INCLUDES)
 # noinst_LTLIBRARIES = libslurmctld.la
 # libslurmctld_la_LDFLAGS  = $(LIB_LDFLAGS) -module --export-dynamic
 # libslurmctld_la_SOURCES =
-slurmctld_SOURCES = \
-	$(SIMULATOR_FILES) \
-	acct_policy.c	\
-	acct_policy.h	\
-	agent.c  	\
-	agent.h		\
-	backup.c	\
-	burst_buffer.c	\
-	burst_buffer.h	\
-	controller.c 	\
-	front_end.c	\
-	front_end.h	\
-	gang.c		\
-	gang.h		\
-	groups.c	\
-	groups.h	\
-	job_mgr.c 	\
-	job_scheduler.c	\
-	job_scheduler.h	\
-	job_submit.c	\
-	job_submit.h	\
-	licenses.c	\
-	licenses.h	\
-	locks.c   	\
-	locks.h  	\
-	node_mgr.c 	\
-	node_scheduler.c \
-	node_scheduler.h \
-	partition_mgr.c \
-	ping_nodes.c	\
-	ping_nodes.h	\
-	port_mgr.c	\
-	port_mgr.h	\
-	power_save.c	\
-	power_save.h	\
-	powercapping.c	\
-	powercapping.h	\
-	preempt.c	\
-	preempt.h	\
-	proc_req.c	\
-	proc_req.h	\
-	read_config.c	\
-	read_config.h	\
-	reservation.c	\
-	reservation.h	\
-	sched_plugin.c	\
-	sched_plugin.h	\
-	slurmctld.h	\
-	slurmctld_plugstack.c \
-	slurmctld_plugstack.h \
-	srun_comm.c	\
-	srun_comm.h	\
-	state_save.c	\
-	state_save.h	\
-	statistics.c	\
-	step_mgr.c	\
-	trigger_mgr.c	\
-	trigger_mgr.h
-
+slurmctld_SOURCES = acct_policy.c acct_policy.h agent.c agent.h \
+	backup.c burst_buffer.c burst_buffer.h controller.c \
+	front_end.c front_end.h gang.c gang.h groups.c groups.h \
+	job_mgr.c job_scheduler.c job_scheduler.h job_submit.c \
+	job_submit.h licenses.c licenses.h locks.c locks.h node_mgr.c \
+	node_scheduler.c node_scheduler.h partition_mgr.c ping_nodes.c \
+	ping_nodes.h port_mgr.c port_mgr.h power_save.c power_save.h \
+	powercapping.c powercapping.h preempt.c preempt.h proc_req.c \
+	proc_req.h read_config.c read_config.h reservation.c \
+	reservation.h sched_plugin.c sched_plugin.h slurmctld.h \
+	slurmctld_plugstack.c slurmctld_plugstack.h srun_comm.c \
+	srun_comm.h state_save.c state_save.h statistics.c step_mgr.c \
+	trigger_mgr.c trigger_mgr.h $(am__append_1)
 slurmctld_LDADD = \
 	$(top_builddir)/src/common/libdaemonize.la  \
 	$(top_builddir)/src/api/libslurm.o $(DL_LIBS)
@@ -682,6 +651,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/read_config.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/reservation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sched_plugin.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/simulator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld_plugstack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/srun_comm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/state_save.Po@am__quote@
@@ -925,9 +895,6 @@ uninstall-am: uninstall-sbinPROGRAMS
 
 .PRECIOUS: Makefile
 
-
-@ENABLE_SIMULATOR_TRUE@	SIMULATOR_FILES = simulator.c
-@ENABLE_SIMULATOR_FALSE@	SIMULATOR_FILES =
 
 force:
 $(slurmctld_LDADD) : force

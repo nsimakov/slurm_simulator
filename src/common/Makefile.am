@@ -24,13 +24,6 @@ noinst_PROGRAMS = libcommon.o libeio.o libspank.o
 # This is needed if compiling on windows
 EXEEXT=
 
-if ENABLE_SIMULATOR
-	SIMULATOR_FILES = sim_funcs.c sim_funcs.h
-else
-	SIMULATOR_FILES =
-endif
-
-
 noinst_LTLIBRARIES = 			\
 	libcommon.la 			\
 	libdaemonize.la 		\
@@ -144,7 +137,10 @@ libcommon_la_SOURCES = 			\
 	xlua.c xlua.h			\
 	callerid.c callerid.h		\
 	siphash24.c siphash_slurm.c siphash.h
-	$(SIMULATOR_FILES)
+
+if ENABLE_SIMULATOR
+libcommon_la_SOURCES += sim_funcs.c sim_funcs.h
+endif
 
 EXTRA_libcommon_la_SOURCES = 		\
 	$(extra_unsetenv_src)		\
