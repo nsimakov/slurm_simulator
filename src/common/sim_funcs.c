@@ -1,5 +1,6 @@
 #ifdef SLURM_SIMULATOR
 
+#include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include "src/common/sim_funcs.h"
@@ -15,6 +16,7 @@ extern errno;
 
 typedef struct sim_user_info{
     uid_t sim_uid;
+    gid_t sim_gid;
     char *sim_name;
     struct sim_user_info *next;
 }sim_user_info_t;
@@ -72,7 +74,7 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
 	//init_shared_memory_if_needed();
 	if (!(current_sim)) {
 		if (attaching_shared_memory() < 0) {
-			error("Error attaching/building shared memory "
+			error("SIM: Error attaching/building shared memory "
 			      "and mmaping it");
 		};
 		if (!real_gettimeofday) init_funcs();
@@ -104,19 +106,19 @@ static int build_shared_memory()
 				S_IRWXU | S_IRWXG | S_IRWXO);
 	if (fd < 0) {
 		int err = errno;
-		error("Error opening %s -- %s", SLURM_SIM_SHM,strerror(err));
+		error("SIM: Error opening %s -- %s", SLURM_SIM_SHM,strerror(err));
 		return -1;
 	}
 
 	if (ftruncate(fd, SIM_SHM_SEGMENT_SIZE)) {
-		info("Warning!  Can not truncate shared memory segment.");
+		info("SIM: Warning!  Can not truncate shared memory segment.");
 	}
 
 	timemgr_data = mmap(0, SIM_SHM_SEGMENT_SIZE, PROT_READ | PROT_WRITE,
 							MAP_SHARED, fd, 0);
 
 	if(!timemgr_data){
-		debug("mmaping %s file can not be done\n", SLURM_SIM_SHM);
+		debug("SIM: mmaping %s file can not be done\n", SLURM_SIM_SHM);
 		return -1;
 	}
 
@@ -135,7 +137,7 @@ extern int attaching_shared_memory()
 	fd = shm_open(SLURM_SIM_SHM, O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO );
 	if (fd >= 0) {
 		if (ftruncate(fd, SIM_SHM_SEGMENT_SIZE)) {
-			info("Warning! Can't truncate shared memory segment.");
+			info("SIM: Warning! Can't truncate shared memory segment.");
 		}
 		timemgr_data = mmap(0, SIM_SHM_SEGMENT_SIZE,
 				    PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -144,7 +146,7 @@ extern int attaching_shared_memory()
 	}
 
 	if (!timemgr_data) {
-		error("mmaping %s file can not be done", SLURM_SIM_SHM);
+		error("SIM: mmaping %s file can not be done", SLURM_SIM_SHM);
 		return -1;
 	}
 
@@ -179,7 +181,7 @@ determine_libc() {
 	}
 
 	if (!found) {
-		error("Could not find the libc file."
+		error("SIM: Could not find the libc file."
 		      "  Try setting SIM_LIBC_PATH.");
 	}
 }
@@ -189,32 +191,32 @@ static void init_funcs()
 	void* handle;
 
 	if (real_gettimeofday == NULL) {
-		debug("Looking for real gettimeofday function");
+		debug("SIM: Looking for real gettimeofday function");
 
 		handle = dlopen(lib_loc, RTLD_LOCAL | RTLD_LAZY);
 		if (handle == NULL) {
-			debug("Error in dlopen %s", dlerror());
+			debug("SIM: Error in dlopen %s", dlerror());
 			return;
 		}
 
 		real_gettimeofday = dlsym( handle, "gettimeofday");
 		if (real_gettimeofday == NULL) {
-			error("Error: no sleep function found");
+			error("Error:SIM:  no sleep function found");
 			return;
 		}
 	}
 
 	if (real_time == NULL) {
-		debug("Looking for real time function");
+		debug("SIM: Looking for real time function");
 
 		handle = dlopen(lib_loc, RTLD_LOCAL | RTLD_LAZY);
 		if (handle == NULL) {
-			error("Error in dlopen: %s", dlerror());
+			error("SIM: Error in dlopen: %s", dlerror());
 			return;
 		}
 		real_time = dlsym( handle, "time");
 		if (real_time == NULL) {
-			error("Error: no sleep function found");
+			error("SIM: Error: no sleep function found");
 			return;
 		}
 	}
@@ -224,7 +226,7 @@ void init_shared_memory_if_needed()
 {
 	if (!(current_sim)) {
 		if (attaching_shared_memory() < 0) {
-			error("Error attaching/building shared memory "
+			error("SIM: Error attaching/building shared memory "
 			      "and mmaping it");
 		};
 	}
@@ -238,21 +240,37 @@ uid_t sim_getuid(const char *name)
 	if (!sim_users_list) getting_simulation_users();
 
 	aux = sim_users_list;
-	debug2("sim_getuid: starting search for username %s", name);
+	debug2("SIM: sim_getuid: starting search for username %s", name);
 
 	while (aux) {
 		if (strcmp(aux->sim_name, name) == 0) {
-			debug2("sim_getuid: found uid %u for username %s",
+			debug2("SIM: sim_getuid: found uid %u for username %s",
 						aux->sim_uid, aux->sim_name);
-			debug2("sim_getuid--name: %s uid: %u",
+			debug2("SIM: sim_getuid--name: %s uid: %u",
 						name, aux->sim_uid);
 			return aux->sim_uid;
 		}
 		aux = aux->next;
 	}
 
-	debug2("sim_getuid--name: %s uid: <Can NOT find uid>", name);
+	debug2("SIM: sim_getuid--name: %s uid: <Can NOT find uid>", name);
 	return -1;
+}
+
+sim_user_info_t *get_sim_user(uid_t uid)
+{
+	sim_user_info_t *aux;
+
+	aux = sim_users_list;
+
+	while (aux) {
+		if (aux->sim_uid == uid) {
+			return aux;
+		}
+		aux = aux->next;
+	}
+
+	return NULL;
 }
 
 char *sim_getname(uid_t uid)
@@ -280,11 +298,11 @@ int getpwnam_r(const char *name, struct passwd *pwd,
 	pwd->pw_uid = sim_getuid(name);
 	if (pwd->pw_uid == -1) {
 		*result = NULL;
-		debug("No user found for name %s", name);
+		debug("SIM: No user found for name %s", name);
 		return ENOENT;
 	}
 	pwd->pw_name = xstrdup(name);
-	debug("Found uid %u for name %s", pwd->pw_uid, pwd->pw_name);
+	debug("SIM: Found uid %u for name %s", pwd->pw_uid, pwd->pw_name);
 
 	*result = pwd;
 
@@ -294,20 +312,21 @@ int getpwnam_r(const char *name, struct passwd *pwd,
 int getpwuid_r(uid_t uid, struct passwd *pwd,
 		char *buf, size_t buflen, struct passwd **result)
 {
+	sim_user_info_t *sim_user=get_sim_user(uid);
 
-	pwd->pw_name = sim_getname(uid);
-
-	if (pwd->pw_name == NULL) {
+	if (sim_user == NULL) {
 		*result = NULL;
-		debug("No user found for uid %u", uid);
+		debug("SIM: No user found for uid %u", uid);
 		return ENOENT;
 	}
+
 	pwd->pw_uid = uid;
-	pwd->pw_gid = 100;  /* users group. Is this portable? */
-	debug("Found name %s for uid %u", pwd->pw_name, pwd->pw_uid);
+	pwd->pw_name = xstrdup(sim_user->sim_name);
+	pwd->pw_gid = sim_user->sim_gid;
 
 	*result = pwd;
 
+	debug("SIM: Found name %s for uid %u and gid %u", pwd->pw_name, pwd->pw_uid, pwd->pw_gid);
 	return 0;
 
 }
@@ -338,74 +357,63 @@ void determine_users_sim_path()
 
 int getting_simulation_users()
 {
-	char              username[100], users_sim_file_name[128];
-	char              uid_string[10];
-	sim_user_info_t * new_sim_user;
-	/*uid_t             sim_uid;*/
-	int               fich, pos, rv = 0;
-	char              c;
+	char username[100], users_sim_file_name[128];
+	char uid_string[10];
+
+	int rv = 0;
 
 	if (sim_users_list)
 		return 0;
 
 	determine_users_sim_path();
 	sprintf(users_sim_file_name, "%s%s", users_sim_path, "users.sim");
-	fich = open(users_sim_file_name, O_RDONLY);
-	if (fich < 0) {
-		info("ERROR: no users.sim available");
+	FILE *fin=fopen(users_sim_file_name,"rt");
+	if (fin ==NULL) {
+		info("ERROR: SIM: no users.sim available");
 		return -1;
 	}
 
-	debug("Starting reading users...");
+	debug("SIM: Starting reading users...");
 
-	while (1) {
+	char *line = NULL;
+	ssize_t read;
+	size_t i,len = 0;
 
-		memset(&username, '\0', 100);
-		pos = 0;
+	while ((read = getline(&line, &len, fin)) != -1) {
+		size_t i;
+		int tmp_uid,tmp_gid;
+		for(i=0;i<len;++i)
+			if(line[i]==':')
+				line[i]=' ';
 
-		while (read(fich, &c, 1) > 0) {
-			username[pos] = c;
-			if (username[pos] == ':') {
-				username[pos] = '\0';
-				break;
-			}
-			pos++;
+		read=sscanf(line,"%s %d %d",username,&tmp_uid,&tmp_gid);
+		if(read==2)
+			tmp_gid=100;
+
+		if(read<2){
+			info("ERROR: SIM: unknown format of users.sim for %s",line);
+			continue;
 		}
 
-		if (pos == 0)
-			break;
-
-		new_sim_user = xmalloc(sizeof(sim_user_info_t));
+		sim_user_info_t * new_sim_user = xmalloc(sizeof(sim_user_info_t));
 		if (new_sim_user == NULL) {
-			error("Malloc error for new sim user");
+			error("SIM: Malloc error for new sim user");
 			rv = -1;
 			goto finish;
 		}
 		debug("Reading user %s", username);
 		new_sim_user->sim_name = xstrdup(username);
+		new_sim_user->sim_uid = (uid_t)tmp_uid;
+		new_sim_user->sim_gid = (gid_t)tmp_gid;
 
-		pos = 0;
-		memset(&uid_string, '\0', 10);
-
-		while (read(fich, &c, 1) > 0) {
-			uid_string[pos] = c;
-			if (uid_string[pos] == '\n') {
-				uid_string[pos] = '\0';
-				break;
-			}
-			pos++;
-		}
-		debug("Reading uid %s", uid_string);
-
-		new_sim_user->sim_uid = (uid_t)atoi(uid_string);
-
-		/* Inserting as list head */
+		// Inserting as list head
 		new_sim_user->next = sim_users_list;
 		sim_users_list = new_sim_user;
-	}
 
+	}
 finish:
-	if (fich) close(fich);
+	free(line);
+	fclose(fin);
 	return rv;
 }
 
