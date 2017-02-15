@@ -19,7 +19,7 @@
 #include <string.h>
 #include <pwd.h>
 #include "slurm/slurm.h"
-#include "src/common/slurm_sim.h"
+#include "sim/sim.h"
 #include <sys/time.h>
 #include <errno.h>
 #include <execinfo.h>

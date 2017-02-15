@@ -1,8 +1,6 @@
-#ifdef SLURM_SIMULATOR
-
-
 #include "config.h"
 
+#ifdef SLURM_SIMULATOR
 #if HAVE_SYS_PRCTL_H
 #  include <sys/prctl.h>
 #endif
@@ -185,8 +183,12 @@ static int _sim_register_nodes()
 	return error_code;
 }
 
+
+
 extern void sim_controller()
 {
+	//read conf
+	sim_read_sim_conf();
 	//register nodes
 	_sim_register_nodes();
 	//simulation controller main loop

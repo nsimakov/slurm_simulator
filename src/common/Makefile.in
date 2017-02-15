@@ -92,7 +92,7 @@ host_triplet = @host@
 target_triplet = @target@
 noinst_PROGRAMS = libcommon.o$(EXEEXT) libeio.o$(EXEEXT) \
 	libspank.o$(EXEEXT)
-@ENABLE_SIMULATOR_TRUE@am__append_1 = sim_funcs.c sim_funcs.h
+@ENABLE_SIMULATOR_TRUE@am__append_1 = sim/sim_funcs.c sim/sim_funcs.h sim/sim_conf.c
 subdir = src/common
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/auxdir/depcomp
@@ -197,9 +197,9 @@ am__libcommon_la_SOURCES_DIST = assoc_mgr.c assoc_mgr.h \
 	entity.c layout.h layout.c layouts_mgr.h layouts_mgr.c \
 	mapping.c mapping.h xcgroup_read_config.c \
 	xcgroup_read_config.h xlua.c xlua.h callerid.c callerid.h \
-	slurm_persist_conn.c slurm_persist_conn.h sim_funcs.c \
-	sim_funcs.h
-@ENABLE_SIMULATOR_TRUE@am__objects_1 = sim_funcs.lo
+	slurm_persist_conn.c slurm_persist_conn.h sim/sim_funcs.c \
+	sim/sim_funcs.h sim/sim_conf.c
+@ENABLE_SIMULATOR_TRUE@am__objects_1 = sim_funcs.lo sim_conf.lo
 am_libcommon_la_OBJECTS = assoc_mgr.lo cpu_frequency.lo \
 	node_features.lo xmalloc.lo xassert.lo xstring.lo xsignal.lo \
 	strnatcmp.lo forward.lo msg_aggr.lo strlcpy.lo list.lo \
@@ -778,6 +778,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/proc_args.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/read_config.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/safeopen.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_conf.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_funcs.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurm_accounting_storage.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurm_acct_gather.Plo@am__quote@
@@ -847,6 +848,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LTCOMPILE) -c -o $@ $<
+
+sim_funcs.lo: sim/sim_funcs.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sim_funcs.lo -MD -MP -MF $(DEPDIR)/sim_funcs.Tpo -c -o sim_funcs.lo `test -f 'sim/sim_funcs.c' || echo '$(srcdir)/'`sim/sim_funcs.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sim_funcs.Tpo $(DEPDIR)/sim_funcs.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='sim/sim_funcs.c' object='sim_funcs.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sim_funcs.lo `test -f 'sim/sim_funcs.c' || echo '$(srcdir)/'`sim/sim_funcs.c
+
+sim_conf.lo: sim/sim_conf.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sim_conf.lo -MD -MP -MF $(DEPDIR)/sim_conf.Tpo -c -o sim_conf.lo `test -f 'sim/sim_conf.c' || echo '$(srcdir)/'`sim/sim_conf.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sim_conf.Tpo $(DEPDIR)/sim_conf.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='sim/sim_conf.c' object='sim_conf.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sim_conf.lo `test -f 'sim/sim_conf.c' || echo '$(srcdir)/'`sim/sim_conf.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
