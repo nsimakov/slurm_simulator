@@ -1,7 +1,25 @@
-#ifndef _SLURM_SIM_H
-#define _SLURM_SIM_H
+#ifndef _SIM_H
+#define _SIM_H
 
 #ifdef SLURM_SIMULATOR
+
+
+/* Slurm simulator configuration parameters */
+typedef struct slurm_sim_conf {
+
+	uint32_t	time_start;	/* initial starting time will be overwritten by time from first job */
+	uint32_t	time_stop;	/* final time when simulation should stop, 0-nether stop, 1-stop after all jobs are done*/
+	uint32_t	time_step;	/* time step for simulation */
+	char *		jobs_trace_file; /* location of file with job traces */
+} slurm_sim_conf_t;
+
+/* simulator configuration */
+extern slurm_sim_conf_t *slurm_sim_conf;
+
+/* read simulator configuration file */
+extern int sim_read_sim_conf(void);
+
+
 
 #define SLURM_SIM_SHM "/tester_slurm_sim.shm"
 #define SIM_SHM_SEGMENT_SIZE         72
@@ -54,6 +72,7 @@ typedef struct simulator_event {
     double work_complete;
     volatile struct simulator_event *next;
 } simulator_event_t;
+
 
 
 #endif

@@ -139,8 +139,9 @@ libcommon_la_SOURCES = 			\
 	siphash24.c siphash_slurm.c siphash.h
 
 if ENABLE_SIMULATOR
-libcommon_la_SOURCES += sim_funcs.c sim_funcs.h
+libcommon_la_SOURCES += sim/sim_funcs.c sim/sim_funcs.h sim/sim_conf.c
 endif
+
 
 EXTRA_libcommon_la_SOURCES = 		\
 	$(extra_unsetenv_src)		\

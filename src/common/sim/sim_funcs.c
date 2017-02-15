@@ -1,9 +1,10 @@
+
 #ifdef SLURM_SIMULATOR
 
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include "src/common/sim_funcs.h"
+#include "sim/sim_funcs.h"
 #include "src/common/slurm_protocol_defs.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
