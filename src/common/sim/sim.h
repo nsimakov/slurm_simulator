@@ -168,8 +168,16 @@ extern void sim_set_time(time_t unix_time);
  * Some simulation utils
  ******************************************************************************/
 
+typedef struct sim_user_info{
+    uid_t sim_uid;
+    gid_t sim_gid;
+    char *sim_name;
+    struct sim_user_info *next;
+}sim_user_info_t;
+
 /* get uid from name */
 extern uid_t sim_getuid(const char *name);
+extern sim_user_info_t *get_sim_user_by_name(const char *name);
 
 #endif
 #endif

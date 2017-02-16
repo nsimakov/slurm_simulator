@@ -768,14 +768,11 @@ extern void *backfill_agent(void *args)
 			continue;
 		}
 		lock_slurmctld(all_locks);
-#ifndef SLURM_SIMULATOR
-//temporary
+
 		(void) _attempt_backfill();
-#endif
 		last_backfill_time = time(NULL);
-#ifndef SLURM_SIMULATOR
 		(void) bb_g_job_try_stage_in();
-#endif
+
 		unlock_slurmctld(all_locks);
 		short_sleep = false;
 	}
@@ -2137,3 +2134,22 @@ static bool _test_resv_overlap(node_space_map_t *node_space,
 	}
 	return overlap;
 }
+
+
+#ifdef SLURM_SIMULATOR
+/* call _load_config for backfill in simulation mode */
+extern void sim_sched_plugin_load_config(void)
+{
+	_load_config();
+}
+/* call _attempt_backfill for backfill in simulation mode */
+extern void sim_sched_plugin_attempt_backfill(void)
+{
+	slurmctld_lock_t all_locks = {
+			READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK };
+	lock_slurmctld(all_locks);
+	(void) _attempt_backfill();
+	(void) bb_g_job_try_stage_in();
+	unlock_slurmctld(all_locks);
+}
+#endif

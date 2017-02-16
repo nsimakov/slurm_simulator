@@ -78,6 +78,12 @@ int init( void )
 		slurm_mutex_unlock( &thread_flag_mutex );
 		return SLURM_ERROR;
 	}
+#ifdef SLURM_SIMULATOR
+	/* in simulation mode we call backfill from simulation main loop */
+	backfill_thread=1;
+	sim_sched_plugin_load_config();
+	return SLURM_SUCCESS;
+#endif
 
 	slurm_attr_init( &attr );
 	/* since we do a join on this later we don't make it detached */
@@ -109,6 +115,12 @@ int slurm_sched_p_reconfig( void )
 
 int slurm_sched_p_schedule(void)
 {
+#ifdef SLURM_SIMULATOR
+	/* in simulation mode we call backfill from simulation main loop
+	 * while in real mode backfill is separate thread which run every
+	 * 1 or 30 seconds */
+	sim_sched_plugin_attempt_backfill();
+#endif
 	return SLURM_SUCCESS;
 }
 
