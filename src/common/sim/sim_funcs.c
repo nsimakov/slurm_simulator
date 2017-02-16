@@ -26,30 +26,43 @@ typedef struct sim_user_info{
 int (*real_gettimeofday)(struct timeval *,struct timezone *) = NULL;
 time_t (*real_time)(time_t *)                                = NULL;
 
+
+
+/* Shared Memory */
+void         * timemgr_data = NULL;
+uint32_t     * current_sim = NULL;
+uint32_t     * current_micro = NULL;
+pid_t        * sim_mgr_pid = NULL;
+pid_t        * slurmctl_pid = NULL;
+int          * slurmd_count = NULL;
+int          * slurmd_registered = NULL;
+int          * global_sync_flag = NULL;
+pid_t        * slurmd_pid = NULL;
+uint32_t     * next_slurmd_event = NULL;
+uint32_t     * sim_jobs_done = NULL;
+
 /* Global Variables */
+
 sim_user_info_t * sim_users_list;
-int             * slurmctl_pid;     /* Shared Memory */
-int             * slurmd_count;     /* Shared Memory */
-int             * slurmd_registered;/* Shared Memory */
-int             * global_sync_flag; /* Shared Memory */
-int             * slurmd_pid;       /* Shared Memory */
+
+
 char            * users_sim_path = NULL;
 char            * lib_loc;
 char            * libc_paths[4] = {"/lib/x86_64-linux-gnu/libc.so.6",
 				   "/lib/libc.so.6","/lib64/libc.so.6",
 				   NULL};
 
-extern void     * timemgr_data;     /* Shared Memory */
-extern uint32_t * current_sim;      /* Shared Memory */
-extern uint32_t * current_micro;    /* Shared Memory */
+
 extern char     * default_slurm_config_file;
-extern uint32_t * next_slurmd_event;      /* Shared Memory */
-extern uint32_t * sim_jobs_done;      /* Shared Memory */
 
 /* Function Prototypes */
 static void init_funcs();
 void init_shared_memory_if_needed();
 int getting_simulation_users();
+
+static int clock_ticking=0;
+static struct timeval ref_timeval={0,0};
+static struct timeval prev_sim_timeval={0,0};
 
 time_t time(time_t *t)
 {
@@ -63,16 +76,27 @@ time_t time(time_t *t)
 	if (!(current_sim) && !real_time) init_funcs();
 	if (!(current_sim)) {
 		return real_time(t);
-	} else {
-		if(t) {
-			*t = *(current_sim);}
-		return *(current_sim);
 	}
+
+	if(clock_ticking){
+		//i.e. clock ticking but time is shifted
+		struct timeval cur_real_time;
+		real_gettimeofday(&cur_real_time,NULL);
+
+		*(current_sim)=prev_sim_timeval.tv_sec+cur_real_time.tv_sec-ref_timeval.tv_sec;
+		*(current_micro)=prev_sim_timeval.tv_usec+cur_real_time.tv_usec-ref_timeval.tv_usec;
+		if(*(current_micro)>1000000){
+			*(current_sim)+=1;
+			*(current_micro)-=1000000;
+		}
+	}
+
+	return *(current_sim);
 }
 
 int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
-	//init_shared_memory_if_needed();
+	init_shared_memory_if_needed();
 	if (!(current_sim)) {
 		if (attaching_shared_memory() < 0) {
 			error("SIM: Error attaching/building shared memory "
@@ -81,22 +105,61 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
 		if (!real_gettimeofday) init_funcs();
 		return real_gettimeofday(tv, tz);
 	}
+
+	if(clock_ticking){
+		//i.e. clock ticking but time is shifted
+		struct timeval cur_real_time;
+		real_gettimeofday(&cur_real_time,NULL);
+
+		*(current_sim)=prev_sim_timeval.tv_sec+cur_real_time.tv_sec-ref_timeval.tv_sec;
+		*(current_micro)=prev_sim_timeval.tv_usec+cur_real_time.tv_usec-ref_timeval.tv_usec;
+		if(*(current_micro)>1000000){
+			*(current_sim)+=1;
+			*(current_micro)-=1000000;
+		}
+	}else{
+		//i.e. clock not ticking
+		*(current_micro) = *(current_micro) + 10;
+	}
+
 	tv->tv_sec       = *(current_sim);
-	*(current_micro) = *(current_micro) + 100;
 	tv->tv_usec      = *(current_micro);
 
 	return 0;
+}
 
-	/*if (!(current_sim) && !real_gettimeofday) init_funcs();
-	if (!(current_sim)) {
-		return real_gettimeofday(tv, tz);
-	} else {
-		tv->tv_sec       = *(current_sim);
-		*(current_micro) = *(current_micro) + 100;
-		tv->tv_usec      = *(current_micro);
-	}
+extern void sim_resume_clock()
+{
+	prev_sim_timeval.tv_sec=*current_sim;
+	prev_sim_timeval.tv_usec=*current_micro;
 
-	return 0;*/
+	clock_ticking=1;
+
+	real_gettimeofday(&ref_timeval,NULL);
+
+
+}
+extern void sim_pause_clock()
+{
+	gettimeofday(&prev_sim_timeval,NULL);
+
+	clock_ticking=0;
+}
+
+extern void sim_incr_clock(int seconds)
+{
+	if(clock_ticking==0)
+		*current_sim=*current_sim+seconds;
+}
+extern void sim_set_time(time_t unix_time)
+{
+	real_gettimeofday(&ref_timeval,NULL);
+
+	*current_sim=unix_time;
+	*current_micro=ref_timeval.tv_usec;
+
+	prev_sim_timeval.tv_sec=*current_sim;
+	prev_sim_timeval.tv_usec=*current_micro;
 }
 
 static int build_shared_memory()
@@ -126,6 +189,10 @@ static int build_shared_memory()
 	return 0;
 
 }
+
+
+
+
 
 /*
  * Slurmctld and slurmd do not really build shared memory but they use that
@@ -172,7 +239,7 @@ determine_libc() {
 	int ix;
 	char found = 0;
 
-	libc_paths[2] = getenv("SIM_LIBC_PATH");
+	libc_paths[3] = getenv("SIM_LIBC_PATH");
 
 	for (ix=2; ix>=0 && !found; --ix) {
 		lib_loc = libc_paths[ix];

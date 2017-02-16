@@ -125,7 +125,7 @@ libcommon_la_SOURCES = 			\
 	slurm_persist_conn.c slurm_persist_conn.h
 
 if ENABLE_SIMULATOR
-libcommon_la_SOURCES += sim/sim_funcs.c sim/sim_funcs.h sim/sim_conf.c
+libcommon_la_SOURCES += sim/sim_funcs.c sim/sim_funcs.h sim/sim_conf.c sim/sim_jobtraces.c
 endif
 
 

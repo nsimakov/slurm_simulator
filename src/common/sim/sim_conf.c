@@ -15,6 +15,7 @@
 #include "src/common/list.h"
 #include "src/common/macros.h"
 #include "src/common/parse_config.h"
+#include "src/common/read_config.h"
 #include "src/common/xmalloc.h"
 #include "src/common/xstring.h"
 #include "src/common/slurmdb_defs.h"
@@ -42,8 +43,8 @@ extern int sim_read_sim_conf(void)
 		slurm_sim_conf = xmalloc(sizeof(slurm_sim_conf_t));
 	}
 	slurm_sim_conf->time_start=978325200;
-	slurm_sim_conf->time_stop=978325200;
-	slurm_sim_conf->time_step=978325200;
+	slurm_sim_conf->time_stop=1;
+	slurm_sim_conf->time_step=1;
 
 	/* Get the slurmdbd.conf path and validate the file */
 	conf_path = get_extra_conf_path("sim.conf");
