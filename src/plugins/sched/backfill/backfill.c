@@ -768,9 +768,14 @@ extern void *backfill_agent(void *args)
 			continue;
 		}
 		lock_slurmctld(all_locks);
+#ifndef SLURM_SIMULATOR
+//temporary
 		(void) _attempt_backfill();
+#endif
 		last_backfill_time = time(NULL);
+#ifndef SLURM_SIMULATOR
 		(void) bb_g_job_try_stage_in();
+#endif
 		unlock_slurmctld(all_locks);
 		short_sleep = false;
 	}
