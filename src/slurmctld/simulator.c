@@ -469,13 +469,51 @@ extern void sim_controller()
 
 	sim_resume_clock();
 
-
+	uint32_t time_to_terminate=0;
 	int run_scheduler=0;
 	int failed_submissions=0;
 	//simulation controller main loop
 	while(1)
 	{
+		int new_job_submitted=0;
+		int job_finished=0;
+		int scheduler_ran=0;
 		info("SIM main loop\n");
+
+		/* Do we have to end simulation in this cycle?
+		 * sim_end_point=0 run indefinitely
+		 * sim_end_point=1 exit when all jobs are done
+		 * sim_end_point>1 run till specified time
+		 * */
+		if (slurm_sim_conf->time_stop==1){
+			/*terminate if all jobs are complete*/
+			if(trace_head==NULL){
+				//no more jobs to submit
+				if(head_simulator_event==NULL){
+					//all jobs in queue are done
+					if(time_to_terminate==0){
+						//No more jobs to run, terminating simulation, but will wait for 1 more minute
+						time_to_terminate=current_sim[0]+60;
+					}
+					else if(current_sim[0]>time_to_terminate){
+						info("No more jobs to run, terminating simulation");
+						exit(0);
+					}
+				}
+				else if(time_to_terminate>0){
+					//change my mind no termination
+					time_to_terminate=0;
+				}
+			}
+		}
+		else if (slurm_sim_conf->time_stop>1){
+			/*terminate if reached end time*/
+			if(slurm_sim_conf->time_stop <= current_sim[0]) {
+				exit(0);
+			}
+		}
+
+
 		/* Now checking if a new job needs to be submitted */
 		while (trace_head) {
 			/*
@@ -503,6 +541,7 @@ extern void sim_controller()
 				trace_head = trace_head->next;
 
 				run_scheduler=1;
+				new_job_submitted=1;
 				/*if (temp_ptr) xfree(temp_ptr);*/
 			} else {
 				/*
@@ -516,17 +555,28 @@ extern void sim_controller()
 		//check if jobs done
 		if(sim_process_finished_jobs()>0){
 			run_scheduler=1;
+			job_finished=1;
 		}
 		run_scheduler=1;
 		//run scheduler
 		if(run_scheduler){
-			schedule(0);
+			//also need to make it run every x seconds
+			int jobs_scheduled=schedule(0);
+			scheduler_ran=1;
 			//slurm_sched_plugin_runonce();
-			run_scheduler=0;
+
+			//i.e. if was not able to schedule anything, need to wait for some
+			//resource to get free
+			if(jobs_scheduled==0)
+				run_scheduler=0;
 		}
 		//update time
+		if(new_job_submitted+job_finished+run_scheduler==0){
+			sim_pause_clock();
+			sim_incr_clock(slurm_sim_conf->time_step);
+			sim_resume_clock();
+		}
 
-		sleep(1);
 	}
 }
 
