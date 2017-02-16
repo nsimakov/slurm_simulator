@@ -355,6 +355,96 @@ static int _sim_submit_job(job_trace_t* jobd)
 	return rv;
 }
 
+/*
+ * this function is called from job_scheduler.c::launch_job(job_ptr)
+ * instead of spin-off agent_queue_request
+ */
+extern void sim_agent_queue_request_joblaunch(struct job_record *job_ptr, batch_job_launch_msg_t *launch_msg_ptr)
+{
+	info("SIM: faking sending message type REQUEST_BATCH_JOB_LAUNCH "
+						"to %s\n", job_ptr->batch_host);
+
+	sim_add_future_event(launch_msg_ptr);
+
+	slurm_free_job_launch_msg(launch_msg_ptr);
+}
+
+static int _sim_send_complete_batch_script_msg(uint32_t jobid, int err, int status)
+{
+	//_slurm_rpc_complete_batch_script(&req_msg, 0);
+	uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL), slurmctld_config.auth_info);
+
+	int error_code = job_complete(jobid, uid, false, false, SLURM_SUCCESS);
+	if(error_code!=SLURM_SUCCESS){
+		info("ERROR:SIM: can not job_complete for job %d",jobid);
+	}
+	return SLURM_SUCCESS;
+}
+/*
+ * return number of processed jobs
+ */
+extern int sim_process_finished_jobs()
+{
+	int jobs_ended=0;
+	time_t now;
+	bool run_scheduler;
+
+	now = time(NULL);
+	while ((head_simulator_event) &&
+			(now >= head_simulator_event->when)) {
+
+		volatile simulator_event_t *aux;
+		int event_jid;
+
+		event_jid               = head_simulator_event->job_id;
+		aux                     = head_simulator_event;
+		head_simulator_event    = head_simulator_event->next;
+		//aux->next               = head_sim_completed_jobs;
+		//head_sim_completed_jobs = aux;
+		//_simulator_remove_job_from_nodes(head_sim_completed_jobs);
+
+		//--total_sim_events;
+
+		debug2("SIM: Sending JOB_COMPLETE_BATCH_SCRIPT"
+			" for job %d", event_jid);
+
+		(*sim_jobs_done)++;
+
+		//pthread_mutex_unlock(&simulator_mutex);
+		_sim_send_complete_batch_script_msg(event_jid,
+			SLURM_SUCCESS, 0);
+		//pthread_mutex_lock(&simulator_mutex);
+
+		slurm_msg_t            msg;
+		epilog_complete_msg_t  req;
+
+		slurm_msg_t_init(&msg);
+
+
+		req.job_id      = event_jid;
+		req.return_code = SLURM_SUCCESS;
+		req.node_name   = "localhost";
+
+		msg.msg_type    = MESSAGE_EPILOG_COMPLETE;
+		msg.data        = &req;
+
+		//_slurm_rpc_epilog_complete(&msg, (bool *)&run_scheduler, 0);
+		if(job_epilog_complete(req.job_id, req.node_name,req.return_code)){
+
+		}else{
+			info("ERROR:SIM: can not job_epilog_complete for job %d",event_jid);
+		}
+
+
+
+		debug2("SIM: JOB_COMPLETE_BATCH_SCRIPT for "
+			"job %d SENT", event_jid);
+
+		++jobs_ended;
+
+	}
+	return jobs_ended;
+}
 
 extern void sim_controller()
 {
@@ -385,6 +475,7 @@ extern void sim_controller()
 	//simulation controller main loop
 	while(1)
 	{
+		info("SIM main loop\n");
 		/* Now checking if a new job needs to be submitted */
 		while (trace_head) {
 			/*
@@ -403,12 +494,14 @@ extern void sim_controller()
 				debug("[%d] time_mgr--current simulated time: "
 					   "%u\n", __LINE__, *current_sim);
 
+				insert_in_queue_trace_record(trace_head);
+
+
 				if (_sim_submit_job (trace_head) < 0)
 					++failed_submissions;
 
-				/* Let's free trace record */
-				/*temp_ptr = trace_head;*/
 				trace_head = trace_head->next;
+
 				run_scheduler=1;
 				/*if (temp_ptr) xfree(temp_ptr);*/
 			} else {
@@ -419,7 +512,20 @@ extern void sim_controller()
 				break;
 			}
 		}
-		info("SIM main loop\n");
+
+		//check if jobs done
+		if(sim_process_finished_jobs()>0){
+			run_scheduler=1;
+		}
+		run_scheduler=1;
+		//run scheduler
+		if(run_scheduler){
+			schedule(0);
+			//slurm_sched_plugin_runonce();
+			run_scheduler=0;
+		}
+		//update time
+
 		sleep(1);
 	}
 }

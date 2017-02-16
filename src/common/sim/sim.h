@@ -90,7 +90,7 @@ typedef struct job_trace {
 	int  tasks_per_node;
 	char reservation[MAX_RSVNAME];
 	char dependency[MAX_RSVNAME];
-	unsigned int pn_min_memory;/* minimum real memory (in MB) per node OR
+	uint64_t pn_min_memory;/* minimum real memory (in MB) per node OR
 	  * real memory per CPU | MEM_PER_CPU,
 	  * NO_VAL use partition default,
 	  * default=0 (no limit) */
@@ -109,6 +109,18 @@ extern job_trace_t *trace_head;
 extern job_trace_t *trace_tail;
 
 extern int sim_read_job_trace(const char*  workload_trace_file);
+
+/* linked list of jobs curently in queue, to keep some of variable needed for
+ * simulation
+ */
+extern job_trace_t *in_queue_trace_head;
+extern job_trace_t *in_queue_trace_tail;
+
+/* insert job to in_queue_trace */
+extern int insert_in_queue_trace_record(job_trace_t *new);
+
+/* find job in_queue_trace */
+extern job_trace_t* find_job__in_queue_trace_record(int job_id);
 /******************************************************************************
  * Simulator Events
  ******************************************************************************/
@@ -128,6 +140,16 @@ typedef struct simulator_event {
     double work_complete;
     volatile struct simulator_event *next;
 } simulator_event_t;
+
+extern simulator_event_t *head_simulator_event;
+
+
+typedef struct batch_job_launch_msg batch_job_launch_msg_t;
+
+extern simulator_event_t * sim_alloc_simulator_event();
+extern void sim_free_simulator_event(simulator_event_t *event);
+
+extern int sim_add_future_event(batch_job_launch_msg_t *req);
 
 /******************************************************************************
  * Operation on simulated time

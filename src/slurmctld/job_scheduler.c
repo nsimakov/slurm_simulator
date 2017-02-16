@@ -146,6 +146,10 @@ static int sched_min_interval = 0;
 
 extern diag_stats_t slurmctld_diag_stats;
 
+
+#ifdef SLURM_SIMULATOR
+extern void sim_agent_queue_request_joblaunch(struct job_record *job_ptr, batch_job_launch_msg_t *launch_msg_ptr);
+#endif
 /*
  * _build_user_job_list - build list of jobs for a given user
  *			  and an optional job name
@@ -2238,6 +2242,12 @@ extern void launch_job(struct job_record *job_ptr)
 	launch_msg_ptr = build_launch_job_msg(job_ptr, protocol_version);
 	if (launch_msg_ptr == NULL)
 		return;
+
+#ifdef SLURM_SIMULATOR
+	// in simulator we would not run agent
+	sim_agent_queue_request_joblaunch(job_ptr,launch_msg_ptr);
+	return;
+#endif
 
 	agent_arg_ptr = (agent_arg_t *) xmalloc(sizeof(agent_arg_t));
 	agent_arg_ptr->protocol_version = protocol_version;

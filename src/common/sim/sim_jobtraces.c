@@ -14,6 +14,34 @@
 job_trace_t *trace_head=NULL;
 job_trace_t *trace_tail=NULL;
 
+job_trace_t *in_queue_trace_head=NULL;
+job_trace_t *in_queue_trace_tail=NULL;
+
+extern int insert_in_queue_trace_record(job_trace_t *new)
+{
+	if (in_queue_trace_head == NULL) {
+		in_queue_trace_head = new;
+		in_queue_trace_tail = new;
+	} else {
+		in_queue_trace_tail->next = new;
+		in_queue_trace_tail = new;
+	}
+	return 0;
+}
+
+/* find job in_queue_trace */
+extern job_trace_t* find_job__in_queue_trace_record(int job_id)
+{
+	if(in_queue_trace_head==NULL)
+		return NULL;
+
+	job_trace_t *node_temp = in_queue_trace_head;
+	while((node_temp!=NULL) && (node_temp->job_id != job_id))
+		node_temp = node_temp->next;
+
+	return node_temp;
+}
+
 static int insert_trace_record(job_trace_t *new)
 {
 	if (trace_head == NULL) {
