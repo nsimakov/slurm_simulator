@@ -585,6 +585,7 @@ int main(int argc, char *argv[])
 		/*
 		 * create attached thread for state save
 		 */
+#ifndef SLURM_SIMULATOR
 		slurm_attr_init(&thread_attr);
 		while (pthread_create(&slurmctld_config.thread_id_save,
 				      &thread_attr, slurmctld_state_save,
@@ -593,7 +594,7 @@ int main(int argc, char *argv[])
 			sleep(1);
 		}
 		slurm_attr_destroy(&thread_attr);
-
+#endif
 		/*
 		 * create attached thread for node power management
   		 */

@@ -15,12 +15,7 @@ extern errno;
 //#define DEBUG
 
 
-typedef struct sim_user_info{
-    uid_t sim_uid;
-    gid_t sim_gid;
-    char *sim_name;
-    struct sim_user_info *next;
-}sim_user_info_t;
+
 
 /* Function Pointers */
 int (*real_gettimeofday)(struct timeval *,struct timezone *) = NULL;
@@ -340,6 +335,23 @@ sim_user_info_t *get_sim_user(uid_t uid)
 
 	return NULL;
 }
+
+sim_user_info_t *get_sim_user_by_name(const char *name)
+{
+	sim_user_info_t *aux;
+
+	aux = sim_users_list;
+
+	while (aux) {
+		if (strcmp(aux->sim_name, name) == 0) {
+			return aux;
+		}
+		aux = aux->next;
+	}
+
+	return NULL;
+}
+
 
 char *sim_getname(uid_t uid)
 {

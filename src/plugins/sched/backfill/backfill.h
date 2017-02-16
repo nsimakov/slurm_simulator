@@ -50,4 +50,14 @@ extern void stop_backfill_agent(void);
 /* Note that slurm.conf has changed */
 extern void backfill_reconfig(void);
 
+
+#ifdef SLURM_SIMULATOR
+
+/* call _load_config for backfill in simulation mode */
+extern void sim_sched_plugin_load_config(void);
+/* call _attempt_backfill for backfill in simulation mode */
+extern void sim_sched_plugin_attempt_backfill(void);
+
+#endif
+
 #endif	/* _SLURM_BACKFILL_H */

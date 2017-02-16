@@ -264,9 +264,13 @@ static int _sim_submit_job(job_trace_t* jobd)
 	dmesg.time_limit    = jobd->wclimit;
 	dmesg.job_id        = jobd->job_id;
 	dmesg.name	    = xstrdup("sim_job");
-	uidt = sim_getuid(jobd->username);
-	dmesg.user_id       = uidt;
-	dmesg.group_id      = gidt;
+	sim_user_info_t *user_info=get_sim_user_by_name(jobd->username);
+	if(user_info==NULL){
+		info("Error:SIM: unknown user for simulator: %s",jobd->username);
+		return SLURM_FAILURE;
+	}
+	dmesg.user_id       = user_info->sim_uid;
+	dmesg.group_id      = user_info->sim_gid;
 	dmesg.work_dir      = xstrdup("/tmp"); /* hardcoded to /tmp for now */
 	dmesg.qos           = xstrdup(jobd->qosname);
 	dmesg.partition     = xstrdup(jobd->partition);
@@ -472,13 +476,18 @@ extern void sim_controller()
 	uint32_t time_to_terminate=0;
 	int run_scheduler=0;
 	int failed_submissions=0;
+
+	uint32_t schedule_last_runtime=*current_sim;
+	uint32_t schedule_plugin_next_runtime=*current_sim+30;
+	int schedule_plugin_short_sleep=false;
+	time_t cur_time;
 	//simulation controller main loop
 	while(1)
 	{
 		int new_job_submitted=0;
 		int job_finished=0;
 		int scheduler_ran=0;
-		info("SIM main loop\n");
+		//info("SIM main loop\n");
 
 		/* Do we have to end simulation in this cycle?
 		 * sim_end_point=0 run indefinitely
@@ -558,17 +567,34 @@ extern void sim_controller()
 			job_finished=1;
 		}
 		run_scheduler=1;
+
+
 		//run scheduler
-		if(run_scheduler){
+
+		if(run_scheduler||schedule_last_runtime+60<time(NULL)){
 			//also need to make it run every x seconds
 			int jobs_scheduled=schedule(0);
 			scheduler_ran=1;
-			//slurm_sched_plugin_runonce();
+			schedule_last_runtime=time(NULL);
 
 			//i.e. if was not able to schedule anything, need to wait for some
 			//resource to get free
 			if(jobs_scheduled==0)
 				run_scheduler=0;
+		}
+		//plugin schedule e.g. backfill
+		cur_time=time(NULL);
+		if(new_job_submitted+job_finished){
+			schedule_plugin_short_sleep=true;
+		}
+		if(schedule_plugin_next_runtime<cur_time)
+		{
+			slurm_sched_g_schedule();
+			if(schedule_plugin_short_sleep)
+				schedule_plugin_next_runtime=*current_sim+1;
+			else
+				schedule_plugin_next_runtime=*current_sim+30;
+			schedule_plugin_short_sleep=false;
 		}
 		//update time
 		if(new_job_submitted+job_finished+run_scheduler==0){
