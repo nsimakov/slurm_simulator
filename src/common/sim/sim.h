@@ -3,6 +3,12 @@
 
 #ifdef SLURM_SIMULATOR
 
+#include <semaphore.h>
+#include "slurm/slurm.h"
+
+/******************************************************************************
+ * Simulator Configuration Parameters
+ ******************************************************************************/
 
 /* Slurm simulator configuration parameters */
 typedef struct slurm_sim_conf {
@@ -20,7 +26,11 @@ extern slurm_sim_conf_t *slurm_sim_conf;
 extern int sim_read_sim_conf(void);
 
 
+/******************************************************************************
+ * Inter-process shared memory
+ ******************************************************************************/
 
+/* shared memory for syncronizing different processes */
 #define SLURM_SIM_SHM "/tester_slurm_sim.shm"
 #define SIM_SHM_SEGMENT_SIZE         72
 
@@ -36,19 +46,20 @@ extern int sim_read_sim_conf(void);
 #define SIM_NEXT_SLURMD_EVENT_OFFSET 64
 #define SIM_JOBS_DONE                68
 
-#include "slurm/slurm.h"
 
-void         * timemgr_data;
-uint32_t     * current_sim;
-uint32_t     * current_micro;
-pid_t        * sim_mgr_pid;
-pid_t        * slurmctl_pid;
-int          * slurmd_count;
-int          * slurmd_registered;
-int          * global_sync_flag;
-pid_t        * slurmd_pid;
-uint32_t     * next_slurmd_event;
-uint32_t     * sim_jobs_done;
+extern void         * timemgr_data;
+extern uint32_t     * current_sim;
+extern uint32_t     * current_micro;
+extern pid_t        * sim_mgr_pid;
+extern pid_t        * slurmctl_pid;
+extern int          * slurmd_count;
+extern int          * slurmd_registered;
+extern int          * global_sync_flag;
+extern pid_t        * slurmd_pid;
+extern uint32_t     * next_slurmd_event;
+extern uint32_t     * sim_jobs_done;
+
+
 
 extern char    syn_sem_name[];
 extern sem_t * mutexserver;
@@ -56,6 +67,51 @@ extern sem_t * mutexserver;
 extern char    sig_sem_name[];
 extern sem_t * mutexsignal;
 
+/******************************************************************************
+ * Simulator job traces
+ ******************************************************************************/
+#define MAX_USERNAME_LEN 30
+#define MAX_RSVNAME_LEN  30
+#define MAX_QOSNAME      30
+#define TIMESPEC_LEN     30
+#define MAX_RSVNAME      30
+
+typedef struct job_trace {
+	int  job_id;
+	char username[MAX_USERNAME_LEN];
+	long int submit; /* relative or absolute? */
+	int  duration;
+	int  wclimit;
+	int  tasks;
+	char qosname[MAX_QOSNAME];
+	char partition[MAX_QOSNAME];
+	char account[MAX_QOSNAME];
+	int  cpus_per_task;
+	int  tasks_per_node;
+	char reservation[MAX_RSVNAME];
+	char dependency[MAX_RSVNAME];
+	unsigned int pn_min_memory;/* minimum real memory (in MB) per node OR
+	  * real memory per CPU | MEM_PER_CPU,
+	  * NO_VAL use partition default,
+	  * default=0 (no limit) */
+	char features[MAX_RSVNAME];
+	char gres[MAX_RSVNAME];
+	int shared;/* 2 if the job can only share nodes with other
+	 *   jobs owned by that user,
+	 * 1 if job can share nodes with other jobs,
+	 * 0 if job needs exclusive access to the node,
+	 * or NO_VAL to accept the system default.
+	 * SHARED_FORCE to eliminate user control. */
+	struct job_trace *next;
+} job_trace_t;
+
+extern job_trace_t *trace_head;
+extern job_trace_t *trace_tail;
+
+extern int sim_read_job_trace(const char*  workload_trace_file);
+/******************************************************************************
+ * Simulator Events
+ ******************************************************************************/
 
 typedef struct simulator_event {
     uint32_t job_id;
@@ -73,7 +129,25 @@ typedef struct simulator_event {
     volatile struct simulator_event *next;
 } simulator_event_t;
 
+/******************************************************************************
+ * Operation on simulated time
+ ******************************************************************************/
 
+extern void sim_resume_clock();
+extern void sim_pause_clock();
+extern void sim_incr_clock(int seconds);
+extern void sim_set_time(time_t unix_time);
+
+/******************************************************************************
+ * Calls to actual function which was substitute for simulation
+ ******************************************************************************/
+
+/******************************************************************************
+ * Some simulation utils
+ ******************************************************************************/
+
+/* get uid from name */
+extern uid_t sim_getuid(const char *name);
 
 #endif
 #endif
