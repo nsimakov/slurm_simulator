@@ -450,6 +450,18 @@ extern int sim_process_finished_jobs()
 	return jobs_ended;
 }
 
+/* reference to sched_plugin */
+int (*sim_sched_plugin_attempt_sched_ref)(void)=NULL;
+
+/* execure scheduler from schedule_plugin */
+extern void schedule_plugin_run_once()
+{
+	if (sim_sched_plugin_attempt_sched_ref!=NULL){
+		(*sim_sched_plugin_attempt_sched_ref)();
+	} else {
+		info("Error: sched_plugin do not support simulator");
+	}
+}
 extern void sim_controller()
 {
 	//read conf
@@ -481,6 +493,7 @@ extern void sim_controller()
 	uint32_t schedule_plugin_next_runtime=*current_sim+30;
 	int schedule_plugin_short_sleep=false;
 	time_t cur_time;
+	schedule_plugin_run_once();
 	//simulation controller main loop
 	while(1)
 	{
@@ -589,7 +602,7 @@ extern void sim_controller()
 		}
 		if(schedule_plugin_next_runtime<cur_time)
 		{
-			slurm_sched_g_schedule();
+			schedule_plugin_run_once();
 			if(schedule_plugin_short_sleep)
 				schedule_plugin_next_runtime=*current_sim+1;
 			else
