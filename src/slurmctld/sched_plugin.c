@@ -308,5 +308,3 @@ slurm_sched_g_get_conf( void )
 
         return (*(ops.get_conf))( );
 }
-
-

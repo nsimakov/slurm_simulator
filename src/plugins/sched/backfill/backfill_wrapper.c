@@ -61,6 +61,12 @@ static int plugin_errno = SLURM_SUCCESS;
 static pthread_t backfill_thread = 0;
 static pthread_mutex_t thread_flag_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#ifdef SLURM_SIMULATOR
+extern int (*sim_sched_plugin_attempt_sched_ref)(void);
+extern void sim_sched_plugin_load_config(void);
+extern void sim_sched_plugin_attempt_backfill(void);
+#endif
+
 int init( void )
 {
 	pthread_attr_t attr;
@@ -82,6 +88,9 @@ int init( void )
 	/* in simulation mode we call backfill from simulation main loop */
 	backfill_thread=1;
 	sim_sched_plugin_load_config();
+
+	/*save the function to call backfill once */
+	sim_sched_plugin_attempt_sched_ref=sim_sched_plugin_attempt_backfill;
 	return SLURM_SUCCESS;
 #endif
 
@@ -115,12 +124,6 @@ int slurm_sched_p_reconfig( void )
 
 int slurm_sched_p_schedule(void)
 {
-#ifdef SLURM_SIMULATOR
-	/* in simulation mode we call backfill from simulation main loop
-	 * while in real mode backfill is separate thread which run every
-	 * 1 or 30 seconds */
-	sim_sched_plugin_attempt_backfill();
-#endif
 	return SLURM_SUCCESS;
 }
 
