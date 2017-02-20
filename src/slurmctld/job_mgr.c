@@ -6733,6 +6733,15 @@ char **get_job_env(struct job_record *job_ptr, uint32_t * env_size)
 	char *file_name = NULL, job_dir[40], **environment = NULL;
 	int cc, fd = -1, hash;
 
+#ifdef SLURM_SIMULATOR
+        /* Standard dummy script. */
+        environment  = (char**)xmalloc(sizeof(char*)*2);
+        environment[0] = xstrdup("HOME=/root");
+        environment[1] = NULL;
+        *env_size=1;
+        return environment;
+#endif
+
 	/* Standard file location for job arrays, version 16.05+ */
 	if (job_ptr->array_task_id != NO_VAL) {
 		hash = job_ptr->array_job_id % 10;
@@ -6795,6 +6804,12 @@ char *get_job_script(struct job_record *job_ptr)
 {
 	char *file_name = NULL, job_dir[40], *script = NULL;
 	int fd = -1, hash;
+
+#ifdef SLURM_SIMULATOR
+	/* Standard dummy script. */
+	script = xstrdup("\necho \"Generated BATCH Job\"\necho \"La Fine!\"\n");
+	return script;
+#endif
 
 	if (!job_ptr->batch_flag)
 		return NULL;
