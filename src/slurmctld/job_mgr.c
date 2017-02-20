@@ -6518,6 +6518,9 @@ extern int validate_job_create_req(job_desc_msg_t * job_desc, uid_t submit_uid,
 static int
 _copy_job_desc_to_file(job_desc_msg_t * job_desc, uint32_t job_id)
 {
+#ifdef SLURM_SIMULATOR
+	return SLURM_SUCCESS;
+#endif
 	int error_code = 0, hash;
 	char *dir_name, job_dir[32], *file_name;
 	DEF_TIMERS;
