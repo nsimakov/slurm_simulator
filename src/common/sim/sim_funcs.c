@@ -156,6 +156,13 @@ extern void sim_set_time(time_t unix_time)
 	prev_sim_timeval.tv_sec=*current_sim;
 	prev_sim_timeval.tv_usec=*current_micro;
 }
+extern unsigned int sim_sleep (unsigned int __seconds)
+{
+	time_t sleep_till=time(NULL)+__seconds;
+	while(sleep_till<time(NULL)){
+		usleep(100);
+	}
+}
 
 static int build_shared_memory()
 {

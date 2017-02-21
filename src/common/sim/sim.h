@@ -159,6 +159,7 @@ extern void sim_resume_clock();
 extern void sim_pause_clock();
 extern void sim_incr_clock(int seconds);
 extern void sim_set_time(time_t unix_time);
+extern unsigned int sim_sleep (unsigned int __seconds);
 
 /******************************************************************************
  * Calls to actual function which was substitute for simulation

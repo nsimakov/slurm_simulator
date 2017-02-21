@@ -462,6 +462,89 @@ extern void schedule_plugin_run_once()
 		info("Error: sched_plugin do not support simulator");
 	}
 }
+/* reference to priority multifactor decay */
+int (*sim_run_priority_decay)(void)=NULL;
+
+
+extern int sched_interval;
+static int      sim_job_sched_cnt = 0;
+static pthread_mutex_t sim_sched_cnt_mutex = PTHREAD_MUTEX_INITIALIZER;
+int sim_schedule()
+{
+	int jobs_scheduled;
+	int purge_job_interval=60;
+	uint32_t job_limit;
+
+	static time_t last_sched_time = 0;
+	static time_t last_full_sched_time = 0;
+	static time_t last_checkpoint_time = 0;
+	static time_t last_purge_job_time = 0;
+	static time_t last_priority_calc_period = 0;
+
+	time_t now;
+	now = time(NULL);
+
+	if (last_sched_time == 0){
+		last_sched_time = now;
+		last_full_sched_time = now;
+		last_checkpoint_time = now;
+		last_purge_job_time = now;
+	}
+
+	/* Locks: Read config, write job, write node, read partition */
+	slurmctld_lock_t job_write_lock = {
+		READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
+	/* Locks: Write job */
+	slurmctld_lock_t job_write_lock2 = {
+		NO_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
+
+
+
+	if (difftime(now, last_purge_job_time) >= purge_job_interval) {
+		now = time(NULL);
+		last_purge_job_time = now;
+		debug2("Performing purge of old job records");
+		lock_slurmctld(job_write_lock);
+		purge_old_job();
+		unlock_slurmctld(job_write_lock);
+	}
+
+
+	job_limit = NO_VAL;
+	if (difftime(now, last_full_sched_time) >= sched_interval) {
+		slurm_mutex_lock(&sim_sched_cnt_mutex);
+		/* job_limit = job_sched_cnt;	Ignored */
+		job_limit = INFINITE;
+		sim_job_sched_cnt = 0;
+		slurm_mutex_unlock(&sim_sched_cnt_mutex);
+		last_full_sched_time = now;
+	} else {
+		slurm_mutex_lock(&sim_sched_cnt_mutex);
+		if (sim_job_sched_cnt &&
+		    (difftime(now, last_sched_time) >=
+		     batch_sched_delay)) {
+			job_limit = 0;	/* Default depth */
+			sim_job_sched_cnt = 0;
+		}
+		slurm_mutex_unlock(&sim_sched_cnt_mutex);
+	}
+	if (job_limit != NO_VAL) {
+		now = time(NULL);
+		last_sched_time = now;
+		lock_slurmctld(job_write_lock2);
+		bb_g_load_state(false);	/* May alter job nice/prio */
+		unlock_slurmctld(job_write_lock2);
+
+		sim_pause_clock();
+		if ( (jobs_scheduled=schedule(job_limit))>0 )
+			last_checkpoint_time = 0; /* force state save */
+		sim_resume_clock();
+
+		set_job_elig_time();
+	}
+
+	return jobs_scheduled;
+}
 extern void sim_controller()
 {
 	//read conf
@@ -489,17 +572,25 @@ extern void sim_controller()
 	int run_scheduler=0;
 	int failed_submissions=0;
 
-	uint32_t schedule_last_runtime=*current_sim;
+	static time_t last_priority_calc_period = 0;
+	uint32_t priority_calc_period = slurm_get_priority_calc_period();
+
+	//uint32_t schedule_last_runtime=*current_sim;
 	uint32_t schedule_plugin_next_runtime=*current_sim+30;
 	int schedule_plugin_short_sleep=false;
 	time_t cur_time;
 	schedule_plugin_run_once();
+	if(sim_run_priority_decay!=NULL){
+		(*sim_run_priority_decay)();
+		last_priority_calc_period=time(NULL);
+	}
+
 	//simulation controller main loop
 	while(1)
 	{
 		int new_job_submitted=0;
 		int job_finished=0;
-		int scheduler_ran=0;
+		//int scheduler_ran=0;
 		//info("SIM main loop\n");
 
 		/* Do we have to end simulation in this cycle?
@@ -581,20 +672,33 @@ extern void sim_controller()
 		}
 		run_scheduler=1;
 
+		//
+		if(sim_run_priority_decay!=NULL){
+			cur_time=time(NULL);
+			if(last_priority_calc_period+priority_calc_period<cur_time){
+				(*sim_run_priority_decay)();
+				last_priority_calc_period=time(NULL);
+			}
+		}
 
 		//run scheduler
 
-		if(run_scheduler||schedule_last_runtime+60<time(NULL)){
+		//if(run_scheduler||schedule_last_runtime+60<time(NULL)){
 			//also need to make it run every x seconds
-			int jobs_scheduled=schedule(0);
-			scheduler_ran=1;
-			schedule_last_runtime=time(NULL);
+			if(run_scheduler){
+				sim_job_sched_cnt++;
+				run_scheduler=0;
+			}
+			int jobs_scheduled=sim_schedule();
+
+			//scheduler_ran=1;
+			//schedule_last_runtime=time(NULL);
 
 			//i.e. if was not able to schedule anything, need to wait for some
 			//resource to get free
-			if(jobs_scheduled==0)
-				run_scheduler=0;
-		}
+			//if(jobs_scheduled==0)
+			//	run_scheduler=0;
+		//}
 		//plugin schedule e.g. backfill
 		cur_time=time(NULL);
 		if(new_job_submitted+job_finished){
