@@ -744,5 +744,21 @@ extern void sim_controller()
 
 	}
 }
+int usleep (__useconds_t __useconds)
+{
+	return __useconds;
+}
+unsigned int sleep (unsigned int __seconds)
+{
+	return __seconds;
+}
 
+int pthread_mutex_lock (pthread_mutex_t *__mutex)
+{
+	return 0;
+}
+int pthread_mutex_unlock (pthread_mutex_t *__mutex)
+{
+	return 0;
+}
 #endif
