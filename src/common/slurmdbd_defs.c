@@ -2029,6 +2029,11 @@ static int _fd_writeable(slurm_fd_t fd)
  ****************************************************************************/
 static void _create_agent(void)
 {
+#ifdef SLURM_SIMULATOR
+	//do we need it?
+	return;
+#endif
+
 	/* this needs to be set because the agent thread will do
 	   nothing if the connection was closed and then opened again */
 	agent_shutdown = 0;
