@@ -114,6 +114,9 @@
 #include "src/slurmctld/state_save.h"
 #include "src/slurmctld/trigger_mgr.h"
 
+#ifdef SLURM_SIMULATOR
+#include "src/common/sim/sim.h"
+#endif
 
 #define CRED_LIFE         60	/* Job credential lifetime in seconds */
 #define DEFAULT_DAEMONIZE 1	/* Run as daemon by default if set */
@@ -539,6 +542,9 @@ int main(int argc, char **argv)
 		 * Create before registering so that the controller can listen
 		 * to any updates from the dbd at startup.
 		 */
+#ifdef SLURM_SIMULATOR
+		if(slurm_sim_conf->rpc_thread){
+#endif
 		server_thread_incr();
 		slurm_attr_init(&thread_attr);
 		while (pthread_create(&slurmctld_config.thread_id_rpc,
@@ -548,7 +554,9 @@ int main(int argc, char **argv)
 			sleep(1);
 		}
 		slurm_attr_destroy(&thread_attr);
-
+#ifdef SLURM_SIMULATOR
+		}
+#endif
 		clusteracct_storage_g_register_ctld(
 			acct_db_conn,
 			slurmctld_conf.slurmctld_port);
@@ -574,6 +582,7 @@ int main(int argc, char **argv)
 		/*
 		 * create attached thread for signal handling
 		 */
+#ifndef SLURM_SIMULATOR
 		slurm_attr_init(&thread_attr);
 		while (pthread_create(&slurmctld_config.thread_id_sig,
 				      &thread_attr, _slurmctld_signal_hand,
@@ -582,7 +591,7 @@ int main(int argc, char **argv)
 			sleep(1);
 		}
 		slurm_attr_destroy(&thread_attr);
-
+#endif
 		/*
 		 * create attached thread for state save
 		 */

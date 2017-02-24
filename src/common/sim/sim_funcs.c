@@ -583,6 +583,8 @@ void __attribute__ ((constructor)) sim_init(void)
 		}
 	}
 
+	sim_read_sim_conf();
+
 	debug("sim_init: done");
 }
 

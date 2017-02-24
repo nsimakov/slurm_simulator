@@ -16,6 +16,9 @@ typedef struct slurm_sim_conf {
 	uint32_t	time_start;	/* initial starting time will be overwritten by time from first job */
 	uint32_t	time_stop;	/* final time when simulation should stop, 0-nether stop, 1-stop after all jobs are done*/
 	uint32_t	time_step;	/* time step for simulation */
+	uint32_t	after_job_launch_time_increament;
+	uint32_t	bf_between_jobs_check_time_increament;
+	uint32_t	rpc_thread;
 	char *		jobs_trace_file; /* location of file with job traces */
 } slurm_sim_conf_t;
 

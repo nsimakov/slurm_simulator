@@ -164,7 +164,7 @@ static void _sim_fill_slurm_node_registration_status_msg(slurm_node_registration
 }
 
 //fake a call from frontend slurmd and register nodes
-static int _sim_register_nodes()
+static int _sim_register_nodes_from_frontend_slurmd()
 {
 	int error_code = SLURM_SUCCESS;
 
@@ -184,6 +184,7 @@ static int _sim_register_nodes()
 
 	return error_code;
 }
+
 /* kill threads which are not impotent for simulation */
 static int _sim_kill_not_critical_threads()
 {
@@ -338,8 +339,10 @@ static int _sim_submit_job(job_trace_t* jobd)
 
 
 	//if (respMsg)
-		info("Response from job submission\n\terror_code: %u"
-				"\n\tjob_id: %u",
+	if(error_code==0)
+		info("Successfully submit job to queue (job_id: %u)", dmesg.job_id);
+	else
+		info("Failed submission of job to queue, error_code: %u job_id: %u",
 				error_code, dmesg.job_id);
 
 	/* Cleanup */
@@ -369,6 +372,14 @@ extern void sim_agent_queue_request_joblaunch(struct job_record *job_ptr, batch_
 						"to %s\n", job_ptr->batch_host);
 
 	sim_add_future_event(launch_msg_ptr);
+
+
+	if(slurm_sim_conf->after_job_launch_time_increament>0){
+		sim_pause_clock();
+		sim_incr_clock(slurm_sim_conf->after_job_launch_time_increament);
+		sim_resume_clock();
+	}
+
 
 	slurm_free_job_launch_msg(launch_msg_ptr);
 }
@@ -453,6 +464,8 @@ extern int sim_process_finished_jobs()
 /* reference to sched_plugin */
 int (*sim_sched_plugin_attempt_sched_ref)(void)=NULL;
 
+int (*sim_db_inx_handler_call_once)()=NULL;
+
 /* execure scheduler from schedule_plugin */
 extern void schedule_plugin_run_once()
 {
@@ -535,10 +548,10 @@ int sim_schedule()
 		bb_g_load_state(false);	/* May alter job nice/prio */
 		unlock_slurmctld(job_write_lock2);
 
-		sim_pause_clock();
+		//sim_pause_clock();
 		if ( (jobs_scheduled=schedule(job_limit))>0 )
 			last_checkpoint_time = 0; /* force state save */
-		sim_resume_clock();
+		//sim_resume_clock();
 
 		set_job_elig_time();
 	}
@@ -548,7 +561,7 @@ int sim_schedule()
 extern void sim_controller()
 {
 	//read conf
-	sim_read_sim_conf();
+
 	//set time
 	*current_sim = slurm_sim_conf->time_start;
 	*current_micro = 0;
@@ -564,7 +577,8 @@ extern void sim_controller()
 	_sim_kill_not_critical_threads();
 
 	//register nodes
-	_sim_register_nodes();
+	//_sim_register_nodes();
+	_sim_register_nodes_from_frontend_slurmd();
 
 	sim_resume_clock();
 
@@ -573,6 +587,7 @@ extern void sim_controller()
 	int failed_submissions=0;
 
 	static time_t last_priority_calc_period = 0;
+	static time_t last_db_inx_handler_call = 0;
 	uint32_t priority_calc_period = slurm_get_priority_calc_period();
 
 	//uint32_t schedule_last_runtime=*current_sim;
@@ -585,7 +600,6 @@ extern void sim_controller()
 		last_priority_calc_period=time(NULL);
 	}
 
-	//simulation controller main loop
 	while(1)
 	{
 		int new_job_submitted=0;
@@ -682,7 +696,7 @@ extern void sim_controller()
 		}
 
 		//run scheduler
-
+		//time_t scheduler_time=time(NULL);
 		//if(run_scheduler||schedule_last_runtime+60<time(NULL)){
 			//also need to make it run every x seconds
 			if(run_scheduler){
@@ -713,6 +727,14 @@ extern void sim_controller()
 				schedule_plugin_next_runtime=*current_sim+30;
 			schedule_plugin_short_sleep=false;
 		}
+
+		//last_db_inx_handler_call
+		if(sim_db_inx_handler_call_once!=NULL && last_db_inx_handler_call-time(NULL)>5){
+			(*sim_db_inx_handler_call_once)();
+			last_db_inx_handler_call=time(NULL);
+		}
+
+		//int sched_dur=time(NULL)-scheduler_time
 		//update time
 		if(new_job_submitted+job_finished+run_scheduler==0){
 			sim_pause_clock();
