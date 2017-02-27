@@ -461,11 +461,6 @@ extern int sim_process_finished_jobs()
 	return jobs_ended;
 }
 
-/* reference to sched_plugin */
-int (*sim_sched_plugin_attempt_sched_ref)(void)=NULL;
-
-int (*sim_db_inx_handler_call_once)()=NULL;
-
 /* execure scheduler from schedule_plugin */
 extern void schedule_plugin_run_once()
 {
@@ -760,5 +755,14 @@ int pthread_mutex_lock (pthread_mutex_t *__mutex)
 int pthread_mutex_unlock (pthread_mutex_t *__mutex)
 {
 	return 0;
+}
+/*
+ * "Constructor" function to be called before the main of each Slurm
+ * entity (e.g. slurmctld, slurmd and commands).
+ */
+
+void __attribute__ ((constructor)) sim_ctrl_init(void)
+{
+	sim_ctrl=1;
 }
 #endif
