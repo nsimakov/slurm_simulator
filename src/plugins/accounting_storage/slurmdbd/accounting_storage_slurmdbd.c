@@ -66,6 +66,11 @@
 #include "src/slurmctld/slurmctld.h"
 #include "src/slurmctld/locks.h"
 
+#ifdef SLURM_SIMULATOR
+extern int (*sim_db_inx_handler_call_once)();
+extern int sim_ctrl;
+#endif
+
 #define BUFFER_SIZE 4096
 
 /* These are defined here so when we link with something other than
@@ -250,7 +255,11 @@ static void *_set_db_inx_thread(void *no_data)
 	slurmctld_lock_t job_write_lock =
 		{ NO_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK };
 	/* DEF_TIMERS; */
-#ifndef SLURM_SIMULATOR
+#ifdef SLURM_SIMULATOR
+	//in simulator we want next few line to be executed only in utilities not slurmctrl
+	if(sim_ctrl==0){
+#endif
+
 #if HAVE_SYS_PRCTL_H
 	if (prctl(PR_SET_NAME, "dbinx", NULL, NULL, NULL) < 0) {
 		error("%s: cannot set my name to %s %m", __func__, "dbinx");
@@ -259,8 +268,12 @@ static void *_set_db_inx_thread(void *no_data)
 	(void) pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	(void) pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
-	while (1) {
+#ifdef SLURM_SIMULATOR
+	}
 #endif
+
+	while (1) {
+
 		List local_job_list = NULL;
 		/* START_TIMER; */
 		/* info("starting db_thread"); */
@@ -283,12 +296,13 @@ static void *_set_db_inx_thread(void *no_data)
 		if (!job_list) {
 			slurm_mutex_unlock(&db_inx_lock);
 			error("_set_db_inx_thread: No job list, waiting");
-#ifndef SLURM_SIMULATOR
+#ifdef SLURM_SIMULATOR
+			if(sim_ctrl){
+				return NULL;
+			}
+#endif
 			sleep(1);
 			continue;
-#else
-			return NULL;
-#endif
 		}
 		itr = list_iterator_create(job_list);
 		while ((job_ptr = list_next(itr))) {
@@ -437,10 +451,14 @@ static void *_set_db_inx_thread(void *no_data)
 		   it doesn't have to find db_indexs of jobs that
 		   haven't had the start rpc come through.
 		*/
-#ifndef SLURM_SIMULATOR
+#ifdef SLURM_SIMULATOR
+		if(sim_ctrl){
+			return NULL;
+		}
+#endif
 		sleep(5);
 	}
-#endif
+
 
 	return NULL;
 }
@@ -452,7 +470,6 @@ static void *_cleanup_thread(void *no_data)
 }
 
 #ifdef SLURM_SIMULATOR
-extern int (*sim_db_inx_handler_call_once)();
 int db_inx_handler_call_once(){
 	_set_db_inx_thread(NULL);
 	return SLURM_SUCCESS;
@@ -481,10 +498,14 @@ extern int init ( void )
 		if (job_list && !(slurm_get_accounting_storage_enforce() &
 				  ACCOUNTING_ENFORCE_NO_JOBS)) {
 #ifdef SLURM_SIMULATOR
-			//in simulation mode db_inx_handler_thread called from simulation main loop
-			sim_db_inx_handler_call_once=db_inx_handler_call_once;
-			db_inx_handler_call_once();
-#else
+			if(sim_ctrl){
+				//in simulation mode db_inx_handler_thread called from simulation main loop
+				//however we want other slurm utilities (lice sacct) to function normally
+				sim_db_inx_handler_call_once=db_inx_handler_call_once;
+				db_inx_handler_call_once();
+			}
+			else {
+#endif
 			/* only do this when job_list is defined
 			 * (in the slurmctld) */
 			pthread_attr_t thread_attr;
@@ -504,6 +525,8 @@ extern int init ( void )
 					   _cleanup_thread, NULL))
 				fatal("pthread_create error %m");
 			slurm_attr_destroy(&thread_attr);
+#ifdef SLURM_SIMULATOR
+			}
 #endif
 		}
 		first = 0;
