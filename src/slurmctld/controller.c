@@ -579,6 +579,9 @@ int main(int argc, char **argv)
 		if (slurm_mcs_init() != SLURM_SUCCESS)
 			fatal("failed to initialize mcs plugin");
 
+#ifdef SLURM_SIMULATOR
+		sim_controller();
+#endif
 		/*
 		 * create attached thread for signal handling
 		 */
@@ -610,9 +613,6 @@ int main(int argc, char **argv)
   		 */
 		start_power_mgr(&slurmctld_config.thread_id_power);
 
-#ifdef SLURM_SIMULATOR
-		sim_controller();
-#endif
 		/*
 		 * process slurm background activities, could run as pthread
 		 */

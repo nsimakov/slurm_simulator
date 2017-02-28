@@ -151,4 +151,23 @@ int32_t	bit_get_pos_num(bitstr_t *b, bitoff_t pos);
 	} while (0)
 
 
+/* word of the bitstring bit is in */
+#define	_bit_word_inline(bit) 		(((bit) >> BITSTR_SHIFT) + BITSTR_OVERHEAD)
+
+/* mask for the bit within its word */
+#ifdef SLURM_BIGENDIAN
+#define	_bit_mask_inline(bit) ((bitstr_t)1 << (BITSTR_MAXPOS - ((bit)&BITSTR_MAXPOS)))
+#else
+#define	_bit_mask_inline(bit) ((bitstr_t)1 << ((bit)&BITSTR_MAXPOS))
+#endif
+
+/*
+ * Is bit N of bitstring b set?
+ *   b (IN)		bitstring to test
+ *   bit (IN)		bit position to test
+ *   RETURN		>0 if bit set, 0 if clear
+ */
+#define	bit_test_inline(b, bit) b[_bit_word_inline(bit)] & _bit_mask_inline(bit)
+
+
 #endif /* !_BITSTRING_H_ */
