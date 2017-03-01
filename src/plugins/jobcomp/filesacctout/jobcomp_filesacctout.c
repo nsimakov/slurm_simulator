@@ -255,7 +255,7 @@ static void _make_time_str (time_t *time, char *string, int size)
 extern int slurm_jobcomp_log_record ( struct job_record *job_ptr )
 {
 	int rc = SLURM_SUCCESS;
-	char job_rec[1024];
+	char job_rec[10240];
 	char usr_str[32], grp_str[32], start_str[32], end_str[32], lim_str[32];
 	char select_buf[128], *state_string, *work_dir;
 	size_t offset = 0, tot_size, wrote;
