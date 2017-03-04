@@ -184,7 +184,7 @@ extern uid_t sim_getuid(const char *name);
 extern sim_user_info_t *get_sim_user_by_name(const char *name);
 
 
-extern int (*sim_sched_plugin_attempt_sched_ref)(void);
+extern void (*sim_sched_plugin_attempt_sched_ref)(void);
 
 extern int (*sim_db_inx_handler_call_once)();
 
