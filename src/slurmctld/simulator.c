@@ -553,6 +553,7 @@ int sim_schedule()
 
 	return jobs_scheduled;
 }
+extern diag_stats_t slurmctld_diag_stats;
 extern void sim_controller()
 {
 	//read conf
@@ -581,15 +582,26 @@ extern void sim_controller()
 	int run_scheduler=0;
 	int failed_submissions=0;
 
+	int jobs_scheduled=0;
+	int jobs_scheduled_by_plugin=0;
+
 	static time_t last_priority_calc_period = 0;
 	static time_t last_db_inx_handler_call = 0;
 	uint32_t priority_calc_period = slurm_get_priority_calc_period();
 
 	//uint32_t schedule_last_runtime=*current_sim;
-	uint32_t schedule_plugin_next_runtime=*current_sim+30;
-	int schedule_plugin_short_sleep=false;
+	int run_scheduler_plugin=0;
+	int schedule_plugin_sleeptype=1;//0-short,1-long, 2-very long
+	int schedule_plugin_next_sleeptype=1;
+	uint32_t schedule_plugin_sleep[3]={1,30,300};
+
+	uint32_t schedule_plugin_last_runtime=0;
+	//uint32_t schedule_plugin_next_runtime=*current_sim+schedule_plugin_sleep[schedule_plugin_sleeptype];
+	uint32_t schedule_plugin_last_depth_try=0;
+	//int schedule_plugin_short_sleep=false;
 	time_t cur_time;
 	schedule_plugin_run_once();
+	schedule_plugin_last_runtime=time(NULL);
 	if(sim_run_priority_decay!=NULL){
 		(*sim_run_priority_decay)();
 		last_priority_calc_period=time(NULL);
@@ -698,7 +710,7 @@ extern void sim_controller()
 				sim_job_sched_cnt++;
 				run_scheduler=0;
 			}
-			int jobs_scheduled=sim_schedule();
+			jobs_scheduled=sim_schedule();
 
 			//scheduler_ran=1;
 			//schedule_last_runtime=time(NULL);
@@ -711,16 +723,29 @@ extern void sim_controller()
 		//plugin schedule e.g. backfill
 		cur_time=time(NULL);
 		if(new_job_submitted+job_finished){
-			schedule_plugin_short_sleep=true;
+			schedule_plugin_next_sleeptype=0;//i.e. short
 		}
-		if(schedule_plugin_next_runtime<cur_time)
+		if(schedule_plugin_sleeptype==2 && schedule_plugin_next_sleeptype==0){
+			//if very long sleep and something happence downgrade it to long sleep
+			schedule_plugin_sleeptype=1;
+		}
+		if(schedule_plugin_last_runtime+schedule_plugin_sleep[schedule_plugin_sleeptype]<=cur_time){
+			run_scheduler_plugin=1;
+		}
+
+		if(run_scheduler_plugin)
 		{
 			schedule_plugin_run_once();
-			if(schedule_plugin_short_sleep)
-				schedule_plugin_next_runtime=*current_sim+1;
-			else
-				schedule_plugin_next_runtime=*current_sim+30;
-			schedule_plugin_short_sleep=false;
+
+			schedule_plugin_last_runtime=time(NULL);
+			schedule_plugin_last_depth_try=slurmctld_diag_stats.bf_last_depth_try;
+
+			schedule_plugin_sleeptype=schedule_plugin_next_sleeptype;
+			schedule_plugin_next_sleeptype=1;
+			run_scheduler_plugin=0;
+
+			//if(schedule_plugin_last_depth_try==0 && schedule_plugin_sleeptype==1)
+			//	schedule_plugin_sleeptype=2;
 		}
 
 		//last_db_inx_handler_call
