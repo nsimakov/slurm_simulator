@@ -95,6 +95,10 @@
 #include "src/slurmctld/srun_comm.h"
 #include "backfill.h"
 
+#ifdef SLURM_SIMULATOR
+#include "src/common/sim/sim.h"
+#endif
+
 #define BACKFILL_INTERVAL	30
 #define BACKFILL_RESOLUTION	60
 #define BACKFILL_WINDOW		(24 * 60 * 60)
@@ -1004,6 +1008,9 @@ static int _attempt_backfill(void)
 		uid = xmalloc(BF_MAX_USERS * sizeof(uint32_t));
 		njobs = xmalloc(BF_MAX_USERS * sizeof(uint16_t));
 	}
+#ifdef SLURM_SIMULATOR
+		uint64_t cycle_start_sim_utime=get_sim_utime();
+#endif
 
 	sort_job_queue(job_queue);
 	while (1) {
@@ -1171,6 +1178,10 @@ next_task:
 		job_test_count++;
 		slurmctld_diag_stats.bf_last_depth++;
 		already_counted = false;
+#ifdef SLURM_SIMULATOR
+		sim_scale_clock(cycle_start_sim_utime,22.25);
+		cycle_start_sim_utime=get_sim_utime();
+#endif
 
 		if (!IS_JOB_PENDING(job_ptr) ||	/* Started in other partition */
 		    (job_ptr->priority == 0))	/* Job has been held */

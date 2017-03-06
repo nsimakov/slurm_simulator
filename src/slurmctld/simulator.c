@@ -553,20 +553,94 @@ int sim_schedule()
 
 	return jobs_scheduled;
 }
+/*copy of printour from sdiag*/
+void sim_sdiag_mini()
+{
+	if(slurm_sim_conf->sdiag_mini_file_out==NULL)
+		return;
+
+	FILE *fout=fopen(slurm_sim_conf->sdiag_mini_file_out,"at");
+	if(fout==NULL)
+		return;
+
+	time_t now = time(NULL);
+
+	fprintf(fout, "*******************************************************\n");
+	fprintf(fout, "sdiag output time: %s", ctime(&now));
+	fprintf(fout, "Data since:        %s", ctime(&last_proc_req_start));
+	fprintf(fout, "*******************************************************\n");
+
+	fprintf(fout, "Server thread count: %d\n", slurmctld_config.server_thread_count);
+	fprintf(fout, "Agent queue size:    %d\n\n", retry_list_size());
+	fprintf(fout, "Jobs submitted: %d\n", slurmctld_diag_stats.jobs_submitted);
+	fprintf(fout, "Jobs started:   %d\n", slurmctld_diag_stats.jobs_started);
+	fprintf(fout, "Jobs completed: %d\n", slurmctld_diag_stats.jobs_completed);
+	fprintf(fout, "Jobs canceled:  %d\n", slurmctld_diag_stats.jobs_canceled);
+	fprintf(fout, "Jobs failed:    %d\n", slurmctld_diag_stats.jobs_failed);
+	fprintf(fout, "\nMain schedule statistics (microseconds):\n");
+	fprintf(fout, "\tLast cycle:   %u\n", slurmctld_diag_stats.schedule_cycle_last);
+	fprintf(fout, "\tMax cycle:    %u\n", slurmctld_diag_stats.schedule_cycle_max);
+	fprintf(fout, "\tTotal cycles: %u\n", slurmctld_diag_stats.schedule_cycle_counter);
+	if (slurmctld_diag_stats.schedule_cycle_counter > 0) {
+		fprintf(fout, "\tMean cycle:   %u\n",
+				slurmctld_diag_stats.schedule_cycle_sum / slurmctld_diag_stats.schedule_cycle_counter);
+		fprintf(fout, "\tMean depth cycle:  %u\n",
+				slurmctld_diag_stats.schedule_cycle_depth / slurmctld_diag_stats.schedule_cycle_counter);
+	}
+	if ((now - last_proc_req_start) > 60) {
+		fprintf(fout, "\tCycles per minute: %u\n",
+		       (uint32_t) (slurmctld_diag_stats.schedule_cycle_counter /
+		       ((now - last_proc_req_start) / 60)));
+	}
+	fprintf(fout, "\tLast queue length: %u\n", slurmctld_diag_stats.schedule_queue_len);
+
+	if (slurmctld_diag_stats.bf_active) {
+		fprintf(fout, "\nBackfilling stats (WARNING: data obtained"
+		       " in the middle of backfilling execution.)\n");
+	} else
+		fprintf(fout, "\nBackfilling stats\n");
+
+	fprintf(fout, "\tTotal backfilled jobs (since last slurm start): %u\n",
+		   slurmctld_diag_stats.backfilled_jobs);
+	fprintf(fout, "\tTotal backfilled jobs (since last stats cycle start): %u\n",
+	       slurmctld_diag_stats.last_backfilled_jobs);
+	fprintf(fout, "\tTotal cycles: %u\n", slurmctld_diag_stats.bf_cycle_counter);
+	fprintf(fout, "\tLast cycle when: %s", ctime(&slurmctld_diag_stats.bf_when_last_cycle));
+	fprintf(fout, "\tLast cycle: %u\n", slurmctld_diag_stats.bf_cycle_last);
+	fprintf(fout, "\tMax cycle:  %u\n", slurmctld_diag_stats.bf_cycle_max);
+	if (slurmctld_diag_stats.bf_cycle_counter > 0) {
+		fprintf(fout, "\tMean cycle: %"PRIu64"\n",
+			slurmctld_diag_stats.bf_cycle_sum / slurmctld_diag_stats.bf_cycle_counter);
+	}
+	fprintf(fout, "\tLast depth cycle: %u\n", slurmctld_diag_stats.bf_last_depth);
+	fprintf(fout, "\tLast depth cycle (try sched): %u\n", slurmctld_diag_stats.bf_last_depth_try);
+	if (slurmctld_diag_stats.bf_cycle_counter > 0) {
+		fprintf(fout, "\tDepth Mean: %u\n",
+				slurmctld_diag_stats.bf_depth_sum / slurmctld_diag_stats.bf_cycle_counter);
+		fprintf(fout, "\tDepth Mean (try depth): %u\n",
+				slurmctld_diag_stats.bf_depth_try_sum / slurmctld_diag_stats.bf_cycle_counter);
+	}
+	fprintf(fout, "\tLast queue length: %u\n", slurmctld_diag_stats.bf_queue_len);
+	if (slurmctld_diag_stats.bf_cycle_counter > 0) {
+		fprintf(fout, "\tQueue length mean: %u\n",
+				slurmctld_diag_stats.bf_queue_len_sum / slurmctld_diag_stats.bf_cycle_counter);
+	}
+	fclose(fout);
+}
+
+
 extern diag_stats_t slurmctld_diag_stats;
 extern void sim_controller()
 {
 	//read conf
 
 	//set time
-	*current_sim = slurm_sim_conf->time_start;
-	*current_micro = 0;
+	*sim_utime = slurm_sim_conf->time_start*1000000;
 
 	//read job traces
 	sim_read_job_trace(slurm_sim_conf->jobs_trace_file);
 	if(trace_head!=NULL){
-		*current_sim = trace_head->submit-3;
-		*current_micro = 0;
+		*sim_utime = (trace_head->submit-3)*1000000;
 	}
 
 	//kill threads which are not impotent for simulation
@@ -578,7 +652,7 @@ extern void sim_controller()
 
 	sim_resume_clock();
 
-	uint32_t time_to_terminate=0;
+	uint64_t time_to_terminate=0;
 	int run_scheduler=0;
 	int failed_submissions=0;
 
@@ -627,9 +701,9 @@ extern void sim_controller()
 					//all jobs in queue are done
 					if(time_to_terminate==0){
 						//No more jobs to run, terminating simulation, but will wait for 1 more minute
-						time_to_terminate=current_sim[0]+60;
+						time_to_terminate=*sim_utime+60000000;
 					}
-					else if(current_sim[0]>time_to_terminate){
+					else if(*sim_utime>time_to_terminate){
 						info("No more jobs to run, terminating simulation");
 						exit(0);
 					}
@@ -642,7 +716,7 @@ extern void sim_controller()
 		}
 		else if (slurm_sim_conf->time_stop>1){
 			/*terminate if reached end time*/
-			if(slurm_sim_conf->time_stop <= current_sim[0]) {
+			if(slurm_sim_conf->time_stop <= *sim_utime/1000000) {
 				exit(0);
 			}
 		}
@@ -656,15 +730,15 @@ extern void sim_controller()
 			 * to have an impact on determinism
 			 */
 
-			debug("time_mgr: current %u and next trace %ld",
-					*(current_sim), trace_head->submit);
+			debug("time_mgr: current %llu and next trace %ld",
+					*(sim_utime), trace_head->submit);
 
-			if (*(current_sim) >= trace_head->submit) {
+			if (*(sim_utime)/1000000 >= trace_head->submit) {
 
 				/*job_trace_t *temp_ptr;*/
 
 				debug("[%d] time_mgr--current simulated time: "
-					   "%u\n", __LINE__, *current_sim);
+					   "%llu\n", __LINE__, *(sim_utime)/1000000);
 
 				insert_in_queue_trace_record(trace_head);
 
@@ -739,6 +813,10 @@ extern void sim_controller()
 
 			schedule_plugin_last_runtime=time(NULL);
 			schedule_plugin_last_depth_try=slurmctld_diag_stats.bf_last_depth_try;
+
+			if(slurm_sim_conf->sdiag_mini_file_out!=NULL){
+				sim_sdiag_mini();
+			}
 
 			schedule_plugin_sleeptype=schedule_plugin_next_sleeptype;
 			schedule_plugin_next_sleeptype=1;

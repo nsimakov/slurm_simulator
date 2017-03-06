@@ -25,8 +25,7 @@ time_t (*real_time)(time_t *)                                = NULL;
 
 /* Shared Memory */
 void         * timemgr_data = NULL;
-uint32_t     * current_sim = NULL;
-uint32_t     * current_micro = NULL;
+uint64_t     * sim_utime = NULL;
 pid_t        * sim_mgr_pid = NULL;
 pid_t        * slurmctl_pid = NULL;
 int          * slurmd_count = NULL;
@@ -63,8 +62,8 @@ void init_shared_memory_if_needed();
 int getting_simulation_users();
 
 static int clock_ticking=0;
-static struct timeval ref_timeval={0,0};
-static struct timeval prev_sim_timeval={0,0};
+static uint64_t ref_utime=0;
+static uint64_t prev_sim_utime=0;
 
 time_t time(time_t *t)
 {
@@ -75,31 +74,29 @@ time_t time(time_t *t)
 	 * Note, here we are examing the location of to where the pointer points
 	 *       and not the value itself.
 	 */
-	if (!(current_sim) && !real_time) init_funcs();
-	if (!(current_sim)) {
+	if (!(sim_utime) && !real_time) init_funcs();
+	if (!(sim_utime)) {
 		return real_time(t);
 	}
 
 	if(clock_ticking){
 		//i.e. clock ticking but time is shifted
 		struct timeval cur_real_time;
+		uint64_t cur_real_utime;
 		real_gettimeofday(&cur_real_time,NULL);
+		cur_real_utime=cur_real_time.tv_sec*1000000+cur_real_time.tv_usec;
 
-		*(current_sim)=prev_sim_timeval.tv_sec+cur_real_time.tv_sec-ref_timeval.tv_sec;
-		*(current_micro)=prev_sim_timeval.tv_usec+cur_real_time.tv_usec-ref_timeval.tv_usec;
-		if(*(current_micro)>1000000){
-			*(current_sim)+=1;
-			*(current_micro)-=1000000;
-		}
+		*sim_utime=cur_real_utime-ref_utime+prev_sim_utime;
+
 	}
 
-	return *(current_sim);
+	return *(sim_utime)/1000000;
 }
 
 int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
 	init_shared_memory_if_needed();
-	if (!(current_sim)) {
+	if (!(sim_utime)) {
 		if (attaching_shared_memory() < 0) {
 			error("SIM: Error attaching/building shared memory "
 			      "and mmaping it");
@@ -111,39 +108,50 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
 	if(clock_ticking){
 		//i.e. clock ticking but time is shifted
 		struct timeval cur_real_time;
+		uint64_t cur_real_utime;
 		real_gettimeofday(&cur_real_time,NULL);
+		cur_real_utime=cur_real_time.tv_sec*1000000+cur_real_time.tv_usec;
 
-		*(current_sim)=prev_sim_timeval.tv_sec+cur_real_time.tv_sec-ref_timeval.tv_sec;
-		*(current_micro)=prev_sim_timeval.tv_usec+cur_real_time.tv_usec-ref_timeval.tv_usec;
-		if(*(current_micro)>1000000){
-			*(current_sim)+=1;
-			*(current_micro)-=1000000;
-		}
+		*sim_utime=cur_real_utime-ref_utime+prev_sim_utime;
 	}else{
 		//i.e. clock not ticking
-		*(current_micro) = *(current_micro) + 10;
+		*(sim_utime) = *(sim_utime) + 10;
 	}
 
-	tv->tv_sec       = *(current_sim);
-	tv->tv_usec      = *(current_micro);
+	tv->tv_sec       = *(sim_utime)/1000000;
+	tv->tv_usec      = *(sim_utime)%1000000;
 
 	return 0;
 }
+uint64_t get_sim_utime()
+{
+	if(clock_ticking){
+		//i.e. clock ticking but time is shifted
+		struct timeval cur_real_time;
+		uint64_t cur_real_utime;
+		real_gettimeofday(&cur_real_time,NULL);
+		cur_real_utime=cur_real_time.tv_sec*1000000+cur_real_time.tv_usec;
 
+		*sim_utime=cur_real_utime-ref_utime+prev_sim_utime;
+	}
+	return *sim_utime;
+}
 extern void sim_resume_clock()
 {
-	prev_sim_timeval.tv_sec=*current_sim;
-	prev_sim_timeval.tv_usec=*current_micro;
+	struct timeval ref_timeval;
+	prev_sim_utime=*sim_utime;
 
 	clock_ticking=1;
 
 	real_gettimeofday(&ref_timeval,NULL);
 
-
+	ref_utime=ref_timeval.tv_sec*1000000+ref_timeval.tv_usec;
 }
 extern void sim_pause_clock()
 {
+	struct timeval prev_sim_timeval;
 	gettimeofday(&prev_sim_timeval,NULL);
+	prev_sim_utime=prev_sim_timeval.tv_sec*1000000+prev_sim_timeval.tv_usec;
 
 	clock_ticking=0;
 }
@@ -151,17 +159,28 @@ extern void sim_pause_clock()
 extern void sim_incr_clock(int seconds)
 {
 	if(clock_ticking==0)
-		*current_sim=*current_sim+seconds;
+		*sim_utime=*sim_utime+seconds*1000000;
 }
+extern void sim_scale_clock(uint64_t start_sim_utime,float scale)
+{
+	if(clock_ticking){
+		uint64_t cur_sim_utime=get_sim_utime();
+		uint64_t cur_dutime=cur_sim_utime-start_sim_utime;
+		uint64_t new_dutime=(uint64_t)((double)cur_dutime*scale);
+
+		ref_utime=ref_utime-(new_dutime-cur_dutime);
+	}
+}
+
 extern void sim_set_time(time_t unix_time)
 {
+	struct timeval ref_timeval;
 	real_gettimeofday(&ref_timeval,NULL);
 
-	*current_sim=unix_time;
-	*current_micro=ref_timeval.tv_usec;
+	*sim_utime=unix_time*1000000;
+	*sim_utime+=ref_timeval.tv_usec;
 
-	prev_sim_timeval.tv_sec=*current_sim;
-	prev_sim_timeval.tv_usec=*current_micro;
+	prev_sim_utime=*sim_utime;
 }
 extern unsigned int sim_sleep (unsigned int __seconds)
 {
@@ -228,8 +247,7 @@ extern int attaching_shared_memory()
 	}
 
 	/* Initializing pointers to shared memory */
-	current_sim       = timemgr_data + SIM_SECONDS_OFFSET;
-	current_micro     = timemgr_data + SIM_MICROSECONDS_OFFSET;
+	sim_utime         = timemgr_data + SIM_MICROSECONDS_OFFSET;
 	sim_mgr_pid       = timemgr_data + SIM_SIM_MGR_PID_OFFSET;
 	slurmctl_pid      = timemgr_data + SIM_SLURMCTLD_PID_OFFSET;
 	slurmd_count      = timemgr_data + SIM_SLURMD_COUNT_OFFSET;
@@ -301,7 +319,7 @@ static void init_funcs()
 
 void init_shared_memory_if_needed()
 {
-	if (!(current_sim)) {
+	if (!(sim_utime)) {
 		if (attaching_shared_memory() < 0) {
 			error("SIM: Error attaching/building shared memory "
 			      "and mmaping it");
@@ -620,9 +638,9 @@ sim_open_sem(char * sem_name, sem_t ** mutex_sync, int max_attempts)
 void
 sim_perform_global_sync(char * sem_name, sem_t ** mutex_sync)
 {
-	static uint32_t oldtime = 0;
+	static uint64_t old_utime = 0;
 
-	while (*global_sync_flag < 2 || *current_sim < oldtime + 1) {
+	while (*global_sync_flag < 2 || *sim_utime < old_utime + 1) {
 		usleep(100000); /* one-tenth second */
 	}
 
@@ -638,7 +656,7 @@ sim_perform_global_sync(char * sem_name, sem_t ** mutex_sync)
 	*global_sync_flag += 1;
 	if (*global_sync_flag > *slurmd_count + 1)
 		*global_sync_flag = 1;
-	oldtime = *current_sim;
+	old_utime = *sim_utime;
 	sem_post(*mutex_sync);
 }
 
@@ -669,10 +687,9 @@ sim_close_sem(sem_t ** mutex_sync)
 void
 sim_usleep(int usec)
 {
-	int sec=usec/1000000;
-	uint32_t oldtime = *current_sim;
+	uint64_t old_utime = *sim_utime;
 
-	while(*current_sim-oldtime<sec){
+	while(*sim_utime-old_utime<usec){
 		usleep(10);
 	}
 }

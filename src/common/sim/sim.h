@@ -20,6 +20,7 @@ typedef struct slurm_sim_conf {
 	uint32_t	bf_between_jobs_check_time_increament;
 	uint32_t	rpc_thread;
 	char *		jobs_trace_file; /* location of file with job traces */
+	char *		sdiag_mini_file_out; /* location of file for mini sdiag output */
 } slurm_sim_conf_t;
 
 /* simulator configuration */
@@ -27,7 +28,6 @@ extern slurm_sim_conf_t *slurm_sim_conf;
 
 /* read simulator configuration file */
 extern int sim_read_sim_conf(void);
-
 
 /******************************************************************************
  * Inter-process shared memory
@@ -38,8 +38,8 @@ extern int sim_read_sim_conf(void);
 #define SIM_SHM_SEGMENT_SIZE         72
 
 /* Offsets */
-#define SIM_SECONDS_OFFSET            0
-#define SIM_MICROSECONDS_OFFSET       8
+//#define SIM_SECONDS_OFFSET            0
+#define SIM_MICROSECONDS_OFFSET       0
 #define SIM_SIM_MGR_PID_OFFSET       16
 #define SIM_SLURMCTLD_PID_OFFSET     24
 #define SIM_SLURMD_COUNT_OFFSET      32
@@ -51,8 +51,7 @@ extern int sim_read_sim_conf(void);
 
 
 extern void         * timemgr_data;
-extern uint32_t     * current_sim;
-extern uint32_t     * current_micro;
+extern uint64_t     * sim_utime;
 extern pid_t        * sim_mgr_pid;
 extern pid_t        * slurmctl_pid;
 extern int          * slurmd_count;
@@ -161,8 +160,10 @@ extern int sim_add_future_event(batch_job_launch_msg_t *req);
 extern void sim_resume_clock();
 extern void sim_pause_clock();
 extern void sim_incr_clock(int seconds);
+extern void sim_scale_clock(uint64_t start_sim_utime,float scale);
 extern void sim_set_time(time_t unix_time);
 extern unsigned int sim_sleep (unsigned int __seconds);
+extern uint64_t get_sim_utime();
 
 /******************************************************************************
  * Calls to actual function which was substitute for simulation
