@@ -99,7 +99,11 @@ extern int sim_add_future_event(batch_job_launch_msg_t *req)
 	assert(trace);
 
 	new_event->job_id = req->job_id;
-	new_event->type = REQUEST_COMPLETE_BATCH_SCRIPT;
+	if(trace->cancelled > 0){
+		new_event->type = REQUEST_CANCEL_JOB;
+	} else {
+		new_event->type = REQUEST_COMPLETE_BATCH_SCRIPT;
+	}
 	new_event->when = now + trace->duration;
 	new_event->next = NULL;
 

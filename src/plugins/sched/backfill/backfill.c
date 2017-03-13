@@ -1159,7 +1159,7 @@ next_task:
 		slurmctld_diag_stats.bf_last_depth++;
 		already_counted = false;
 #ifdef SLURM_SIMULATOR
-		sim_scale_clock(cycle_start_sim_utime,22.25);
+		sim_scale_clock(cycle_start_sim_utime,2*22.25);
 		cycle_start_sim_utime=get_sim_utime();
 #endif
 

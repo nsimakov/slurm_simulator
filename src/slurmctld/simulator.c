@@ -419,41 +419,66 @@ extern int sim_process_finished_jobs()
 		//_simulator_remove_job_from_nodes(head_sim_completed_jobs);
 
 		//--total_sim_events;
-
-		debug2("SIM: Sending JOB_COMPLETE_BATCH_SCRIPT"
-			" for job %d", event_jid);
-
 		(*sim_jobs_done)++;
 
-		//pthread_mutex_unlock(&simulator_mutex);
-		_sim_send_complete_batch_script_msg(event_jid,
-			SLURM_SUCCESS, 0);
-		//pthread_mutex_lock(&simulator_mutex);
+		struct job_record *job_ptr = find_job_record(event_jid);
 
-		slurm_msg_t            msg;
-		epilog_complete_msg_t  req;
+		if(head_simulator_event->type==REQUEST_COMPLETE_BATCH_SCRIPT || IS_JOB_RUNNING(job_ptr))
+		{
+			debug2("SIM: Sending JOB_COMPLETE_BATCH_SCRIPT"
+				" for job %d", event_jid);
 
-		slurm_msg_t_init(&msg);
+			//pthread_mutex_unlock(&simulator_mutex);
+			_sim_send_complete_batch_script_msg(event_jid,
+				SLURM_SUCCESS, 0);
+			//pthread_mutex_lock(&simulator_mutex);
+
+			slurm_msg_t            msg;
+			epilog_complete_msg_t  req;
+
+			slurm_msg_t_init(&msg);
 
 
-		req.job_id      = event_jid;
-		req.return_code = SLURM_SUCCESS;
-		req.node_name   = "localhost";
+			req.job_id      = event_jid;
+			req.return_code = SLURM_SUCCESS;
+			req.node_name   = "localhost";
 
-		msg.msg_type    = MESSAGE_EPILOG_COMPLETE;
-		msg.data        = &req;
+			msg.msg_type    = MESSAGE_EPILOG_COMPLETE;
+			msg.data        = &req;
 
-		//_slurm_rpc_epilog_complete(&msg, (bool *)&run_scheduler, 0);
-		if(job_epilog_complete(req.job_id, req.node_name,req.return_code)){
+			//_slurm_rpc_epilog_complete(&msg, (bool *)&run_scheduler, 0);
+			if(job_epilog_complete(req.job_id, req.node_name,req.return_code)){
 
-		}else{
-			info("ERROR:SIM: can not job_epilog_complete for job %d",event_jid);
+			}else{
+				info("ERROR:SIM: can not job_epilog_complete for job %d",event_jid);
+			}
+
+			debug2("SIM: JOB_COMPLETE_BATCH_SCRIPT for "
+				"job %d SENT", event_jid);
 		}
+		else if(head_simulator_event->type==REQUEST_CANCEL_JOB)
+		{
+			debug2("SIM: Sending REQUEST_CANCEL_JOB"
+							" for job %d", event_jid);
 
 
+			job_ptr->job_state	= JOB_CANCELLED;
+			job_ptr->start_time	= now;
+			job_ptr->end_time	= now;
+			srun_allocate_abort(job_ptr);
+			job_completion_logger(job_ptr, false);
+			/* Send back a response to the origin cluster, in other cases
+			 * where the job is running the job will send back a response
+			 * after the job is is completed. This can happen when the
+			 * pending origin job is put into a hold state and the siblings
+			 * are removed or when the job is canceled from the origin. */
+			fed_mgr_job_complete(job_ptr, 0, job_ptr->start_time);
 
-		debug2("SIM: JOB_COMPLETE_BATCH_SCRIPT for "
-			"job %d SENT", event_jid);
+
+			debug2("SIM: REQUEST_CANCEL_JOB for "
+				"job %d SENT", event_jid);
+		}
+		remove_from_in_queue_trace_record(find_job__in_queue_trace_record(event_jid));
 
 		++jobs_ended;
 

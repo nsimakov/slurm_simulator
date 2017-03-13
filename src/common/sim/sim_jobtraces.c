@@ -28,6 +28,54 @@ extern int insert_in_queue_trace_record(job_trace_t *new)
 	}
 	return 0;
 }
+extern int remove_from_in_queue_trace_record(job_trace_t *remove)
+{
+	if(remove==NULL){
+		error("SIM: remove_from_in_queue_trace_record remove==NULL");
+		return 1;
+	}
+	if (in_queue_trace_head==NULL && in_queue_trace_tail==NULL){
+		error("SIM: remove_from_in_queue_trace_record no jobs in in_queue_trace");
+		return 1;
+	}
+
+	job_trace_t *prev=NULL;
+	job_trace_t *next=remove->next;
+	remove->next=NULL;
+
+	job_trace_t *trace=in_queue_trace_head;
+
+	//if only trace
+	if (in_queue_trace_head==remove && in_queue_trace_tail==remove) {
+		in_queue_trace_head = NULL;
+		in_queue_trace_tail = NULL;
+		return 0;
+	}
+	//if head trace
+	if (in_queue_trace_head == remove) {
+		in_queue_trace_head = next;
+		return 0;
+	}
+
+	//at the end or middle
+	while(trace!=NULL){
+		if(trace->next==remove){
+			prev=trace;
+			break;
+		}
+		trace=trace->next;
+	}
+	if(prev!=NULL){
+		prev->next=next;
+		if(in_queue_trace_tail==remove)
+			in_queue_trace_tail=prev;
+		return 0;
+	}else{
+		error("SIM: remove_from_in_queue_trace_record can not find previous element");
+	}
+
+	return 1;
+}
 
 /* find job in_queue_trace */
 extern job_trace_t* find_job__in_queue_trace_record(int job_id)
@@ -54,40 +102,76 @@ static int insert_trace_record(job_trace_t *new)
 	return 0;
 }
 
+#define read_single_var(v,f) fread(&v,sizeof(v),1,f);
+
+int _read_string(char **ps, FILE *trace_file)
+{
+	char *s;
+    int l;
+    read_single_var(l,trace_file);
+    s=(char*)calloc(l+1,sizeof(char));
+    if(l>0)
+    {
+    	fread(s,sizeof(char),l,trace_file);
+    }
+    *ps=s;
+    return 0;
+}
+#define read_string(v,f) _read_string(&(v),f)
+
+job_trace_t* read_single_trace(FILE *trace_file)
+{
+	job_trace_t *trace = (job_trace_t*)calloc(1,sizeof(job_trace_t));
+	if (!trace) {
+		printf("SIM: Error.  Unable to allocate memory for job record.\n");
+		return -1;
+	}
+	read_single_var(trace->job_id,trace_file);
+	read_string(trace->username, trace_file);
+
+	read_single_var(trace->submit,trace_file);
+	read_single_var(trace->duration,trace_file);
+	read_single_var(trace->wclimit,trace_file);
+	read_single_var(trace->tasks,trace_file);
+	read_string(trace->qosname, trace_file);
+	read_string(trace->partition, trace_file);
+	read_string(trace->account, trace_file);
+	read_single_var(trace->cpus_per_task,trace_file);
+	read_single_var(trace->tasks_per_node,trace_file);
+	read_string(trace->reservation, trace_file);
+	read_string(trace->dependency, trace_file);
+	read_single_var(trace->pn_min_memory,trace_file);
+	read_string(trace->features, trace_file);
+	read_string(trace->gres, trace_file);
+	read_single_var(trace->shared,trace_file);
+	read_single_var(trace->cancelled, trace_file);
+	trace->next=NULL;
+    return trace;
+}
+
+
 extern int sim_read_job_trace(const char*  workload_trace_file)
 {
-	struct stat  stat_buf;
-	int          nrecs = 0, idx = 0;
-	job_trace_t* job_arr;
-	int trace_file;
+	int idx = 0;
 
-	trace_file = open(workload_trace_file, O_RDONLY);
-	if (trace_file < 0) {
+	FILE *trace_file = fopen(workload_trace_file, "rb");
+	if (trace_file == NULL) {
 		error("SIM: Error opening file %s", workload_trace_file);
 		exit(1);
 		return -1;
 	}
 
-	fstat(trace_file, &stat_buf);
-	nrecs = stat_buf.st_size / sizeof(job_trace_t);
-	info("SIM: Ci dev'essere %d job records to be read.", nrecs);
-
-	job_arr = (job_trace_t*)malloc(sizeof(job_trace_t)*nrecs);
-	if (!job_arr) {
-		printf("SIM: Error.  Unable to allocate memory for all job records.\n");
-		return -1;
-	}
-
-	while (read(trace_file, &job_arr[idx], sizeof(job_trace_t))) {
-		job_arr[idx].next = NULL;
-		insert_trace_record(&job_arr[idx]);
+	job_trace_t *trace=NULL;
+	while(feof(trace_file)==0)
+	{
+		trace=read_single_trace(trace_file);
+		insert_trace_record(trace);
 		++idx;
 	}
 
 	info("SIM: Trace initialization done. Total trace records: %d", idx);
 
-	close(trace_file);
-	/*free (job_arr);*/
+	fclose(trace_file);
 
 	return 0;
 }
