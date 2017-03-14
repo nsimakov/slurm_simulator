@@ -37,6 +37,7 @@ extern int sim_read_sim_conf(void)
 		{"RPCThread", S_P_UINT32},
 		{"JobsTraceFile", S_P_STRING},
 		{"sdiagMiniFileOut", S_P_STRING},
+		{"SimStats", S_P_STRING},
 		{NULL} };
 	s_p_hashtbl_t *tbl = NULL;
 	char *conf_path = NULL;
@@ -71,6 +72,9 @@ extern int sim_read_sim_conf(void)
 
 		if (!s_p_get_string(&slurm_sim_conf->sdiag_mini_file_out, "sdiagMiniFileOut", tbl))
 			slurm_sim_conf->sdiag_mini_file_out = NULL;
+
+		if (!s_p_get_string(&slurm_sim_conf->sim_stat, "SimStats", tbl))
+			slurm_sim_conf->sim_stat = NULL;
 
 		s_p_get_uint32(&slurm_sim_conf->time_start, "TimeStart", tbl);
 		s_p_get_uint32(&slurm_sim_conf->time_stop, "TimeStop", tbl);
