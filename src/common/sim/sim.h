@@ -21,6 +21,7 @@ typedef struct slurm_sim_conf {
 	uint32_t	rpc_thread;
 	char *		jobs_trace_file; /* location of file with job traces */
 	char *		sdiag_mini_file_out; /* location of file for mini sdiag output */
+	char *      sim_stat; /*sim stat output*/
 } slurm_sim_conf_t;
 
 /* simulator configuration */
@@ -168,6 +169,7 @@ extern void sim_scale_clock(uint64_t start_sim_utime,float scale);
 extern void sim_set_time(time_t unix_time);
 extern unsigned int sim_sleep (unsigned int __seconds);
 extern uint64_t get_sim_utime();
+extern double get_realtime();
 
 /******************************************************************************
  * Calls to actual function which was substitute for simulation

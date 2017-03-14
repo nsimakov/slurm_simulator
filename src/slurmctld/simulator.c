@@ -15,6 +15,7 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/times.h>
 
 #include "slurm/slurm_errno.h"
 
@@ -489,11 +490,82 @@ extern int sim_process_finished_jobs()
 /* execure scheduler from schedule_plugin */
 extern void schedule_plugin_run_once()
 {
+	int jobs_pending=0;
+	int jobs_running=0;
+
+	int nodes_idle=0;
+	int nodes_mixed=0;
+	int nodes_allocated=0;
+
+	if(slurm_sim_conf->sim_stat!=NULL){
+		ListIterator job_iterator;
+		struct job_record *job_ptr;
+
+
+		job_iterator = list_iterator_create(job_list);
+		while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
+			if(IS_JOB_PENDING(job_ptr))jobs_pending++;
+			if(IS_JOB_RUNNING(job_ptr))jobs_running++;
+		}
+		list_iterator_destroy(job_iterator);
+
+		int inx;
+		struct node_record *node_ptr = node_record_table_ptr;
+		for (inx = 0; inx < node_record_count; inx++, node_ptr++) {
+			if(IS_NODE_IDLE(node_ptr))nodes_idle++;
+			if(IS_NODE_MIXED(node_ptr))nodes_mixed++;
+			if(IS_NODE_ALLOCATED(node_ptr))nodes_allocated++;
+		}
+	}
+
+	double t=get_realtime();
+	struct tms m_tms0,m_tms1;
+
+	clock_t st=clock();
+	times(&m_tms0);
 	if (sim_sched_plugin_attempt_sched_ref!=NULL){
 		(*sim_sched_plugin_attempt_sched_ref)();
 	} else {
 		info("Error: sched_plugin do not support simulator");
 	}
+	times(&m_tms1);
+	st=clock()-st;
+	t=get_realtime()-t;
+
+	clock_t tms_utime=m_tms1.tms_utime-m_tms0.tms_utime;
+	clock_t tms_stime=m_tms1.tms_stime-m_tms0.tms_stime;
+
+	if(slurm_sim_conf->sim_stat!=NULL){
+		FILE *fout=fopen(slurm_sim_conf->sim_stat,"at");
+		if(fout==NULL)
+			return;
+
+		time_t now = time(NULL);
+
+		fprintf(fout, "*Backfill*Stats****************************************\n");
+		fprintf(fout, "Output time: %s", ctime(&now));
+		fprintf(fout, "\tLast cycle when: %s", ctime(&slurmctld_diag_stats.bf_when_last_cycle));
+		fprintf(fout, "\tLast cycle: %u\n", slurmctld_diag_stats.bf_cycle_last);
+		fprintf(fout, "\tLast depth cycle: %u\n", slurmctld_diag_stats.bf_last_depth);
+		fprintf(fout, "\tLast depth cycle (try sched): %u\n", slurmctld_diag_stats.bf_last_depth_try);
+		fprintf(fout, "\tLast queue length: %u\n", slurmctld_diag_stats.bf_queue_len);
+
+		fprintf(fout, "\tRun real time: %.6f\n", t);
+		fprintf(fout, "\tRun real utime: %lld\n",tms_utime);
+		fprintf(fout, "\tRun real stime: %lld\n",tms_stime);
+		fprintf(fout, "\tCLK_TCK: %d\n", sysconf (_SC_CLK_TCK));
+		fprintf(fout, "\tRun clock: %lld\n",st);
+		fprintf(fout, "\tCLOCKS_PER_SEC: %d\n",CLOCKS_PER_SEC);
+
+		fprintf(fout, "\tjobs_pending: %d\n",jobs_pending);
+		fprintf(fout, "\tjobs_running: %d\n",jobs_running);
+		fprintf(fout, "\tnodes_idle: %d\n",nodes_idle);
+		fprintf(fout, "\tnodes_mixed: %d\n",nodes_mixed);
+		fprintf(fout, "\tnodes_allocated: %d\n",nodes_allocated);
+
+		fclose(fout);
+	}
+
 }
 /* reference to priority multifactor decay */
 int (*sim_run_priority_decay)(void)=NULL;
@@ -569,8 +641,78 @@ int sim_schedule()
 		unlock_slurmctld(job_write_lock2);
 
 		//sim_pause_clock();
-		if ( (jobs_scheduled=schedule(job_limit))>0 )
-			last_checkpoint_time = 0; /* force state save */
+		int jobs_pending=0;
+		int jobs_running=0;
+
+		int nodes_idle=0;
+		int nodes_mixed=0;
+		int nodes_allocated=0;
+
+
+		if(slurm_sim_conf->sim_stat!=NULL){
+			ListIterator job_iterator;
+			struct job_record *job_ptr;
+
+
+			job_iterator = list_iterator_create(job_list);
+			while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
+				if(IS_JOB_PENDING(job_ptr))jobs_pending++;
+				if(IS_JOB_RUNNING(job_ptr))jobs_running++;
+			}
+			list_iterator_destroy(job_iterator);
+
+			int inx;
+			struct node_record *node_ptr = node_record_table_ptr;
+			for (inx = 0; inx < node_record_count; inx++, node_ptr++) {
+				if(IS_NODE_IDLE(node_ptr))nodes_idle++;
+				if(IS_NODE_MIXED(node_ptr))nodes_mixed++;
+				if(IS_NODE_ALLOCATED(node_ptr))nodes_allocated++;
+			}
+		}
+
+		double t=get_realtime();
+		struct tms m_tms0,m_tms1;
+		clock_t st=clock();
+		times(&m_tms0);
+		jobs_scheduled=schedule(job_limit);
+		times(&m_tms1);
+		st=clock()-st;
+		t=get_realtime()-t;
+
+		clock_t tms_utime=m_tms1.tms_utime-m_tms0.tms_utime;
+		clock_t tms_stime=m_tms1.tms_stime-m_tms0.tms_stime;
+
+		if(slurm_sim_conf->sim_stat!=NULL&&jobs_scheduled>0){
+			FILE *fout=fopen(slurm_sim_conf->sim_stat,"at");
+
+			time_t now = time(NULL);
+
+			fprintf(fout, "*Scheduler*Stats***************************************\n");
+			fprintf(fout, "Output time: %s", ctime(&now));
+
+			fprintf(fout, "\tLast cycle:   %u\n", slurmctld_diag_stats.schedule_cycle_last);
+			fprintf(fout, "\tLast depth cycle: %u\n", slurmctld_diag_stats.schedule_cycle_depth);
+			fprintf(fout, "\tLast scheduled: %u\n", jobs_scheduled);
+			fprintf(fout, "\tLast queue length: %u\n", slurmctld_diag_stats.schedule_queue_len);
+
+			fprintf(fout, "\tRun real time: %.6f\n", t);
+			fprintf(fout, "\tRun real utime: %lld\n",tms_utime);
+			fprintf(fout, "\tRun real stime: %lld\n",tms_stime);
+
+			fprintf(fout, "\tCLK_TCK: %d\n", sysconf (_SC_CLK_TCK));
+			fprintf(fout, "\tRun clock: %lld\n",st);
+			fprintf(fout, "\tCLOCKS_PER_SEC: %d\n",CLOCKS_PER_SEC);
+
+			fprintf(fout, "\tjobs_pending: %d\n",jobs_pending);
+			fprintf(fout, "\tjobs_running: %d\n",jobs_running);
+			fprintf(fout, "\tnodes_idle: %d\n",nodes_idle);
+			fprintf(fout, "\tnodes_mixed: %d\n",nodes_mixed);
+			fprintf(fout, "\tnodes_allocated: %d\n",nodes_allocated);
+
+			fclose(fout);
+		}
+
+
 		//sim_resume_clock();
 
 		set_job_elig_time();
@@ -655,6 +797,7 @@ void sim_sdiag_mini()
 
 
 extern diag_stats_t slurmctld_diag_stats;
+
 extern void sim_controller()
 {
 	//read conf

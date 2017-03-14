@@ -92,7 +92,17 @@ time_t time(time_t *t)
 
 	return *(sim_utime)/1000000;
 }
+double get_realtime()
+{
+	struct timeval cur_real_time;
+	uint64_t cur_real_utime;
+	real_gettimeofday(&cur_real_time,NULL);
+	cur_real_utime=cur_real_time.tv_sec*1000000+cur_real_time.tv_usec;
 
+	double t=cur_real_utime*0.000001;
+
+	return t;
+}
 int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
 	init_shared_memory_if_needed();
