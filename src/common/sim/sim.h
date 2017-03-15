@@ -145,7 +145,7 @@ typedef struct simulator_event {
     double performance_factor;
     double work_total;
     double work_complete;
-    volatile struct simulator_event *next;
+    struct simulator_event *next;
 } simulator_event_t;
 
 extern simulator_event_t *head_simulator_event;

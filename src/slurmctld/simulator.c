@@ -409,7 +409,7 @@ extern int sim_process_finished_jobs()
 	while ((head_simulator_event) &&
 			(now >= head_simulator_event->when)) {
 
-		volatile simulator_event_t *aux;
+		simulator_event_t *aux;
 		int event_jid;
 
 		event_jid               = head_simulator_event->job_id;
@@ -424,7 +424,7 @@ extern int sim_process_finished_jobs()
 
 		struct job_record *job_ptr = find_job_record(event_jid);
 
-		if(head_simulator_event->type==REQUEST_COMPLETE_BATCH_SCRIPT || IS_JOB_RUNNING(job_ptr))
+		if(aux->type==REQUEST_COMPLETE_BATCH_SCRIPT || IS_JOB_RUNNING(job_ptr))
 		{
 			debug2("SIM: Sending JOB_COMPLETE_BATCH_SCRIPT"
 				" for job %d", event_jid);
@@ -457,7 +457,7 @@ extern int sim_process_finished_jobs()
 			debug2("SIM: JOB_COMPLETE_BATCH_SCRIPT for "
 				"job %d SENT", event_jid);
 		}
-		else if(head_simulator_event->type==REQUEST_CANCEL_JOB)
+		else if(aux->type==REQUEST_CANCEL_JOB)
 		{
 			debug2("SIM: Sending REQUEST_CANCEL_JOB"
 							" for job %d", event_jid);
