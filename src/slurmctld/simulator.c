@@ -55,7 +55,6 @@
 #include "src/slurmctld/acct_policy.h"
 #include "src/slurmctld/agent.h"
 #include "src/slurmctld/burst_buffer.h"
-#include "src/slurmctld/fed_mgr.h"
 #include "src/slurmctld/front_end.h"
 #include "src/slurmctld/job_scheduler.h"
 #include "src/slurmctld/job_submit.h"
@@ -121,13 +120,13 @@ static void _sim_fill_slurm_node_registration_status_msg(slurm_node_registration
 	if (first_msg) {
 		first_msg = false;
 		info("CPUs=%u Boards=%u Sockets=%u Cores=%u Threads=%u "
-		     "Memory=%lu TmpDisk=%u Uptime=%u CPUSpecList=%s",
+		     "Memory=%u TmpDisk=%u Uptime=%u CPUSpecList=%s",
 		     msg->cpus, msg->boards, msg->sockets, msg->cores,
 		     msg->threads, msg->real_memory, msg->tmp_disk,
 		     msg->up_time, msg->cpu_spec_list);
 	} else {
 		debug3("CPUs=%u Boards=%u Sockets=%u Cores=%u Threads=%u "
-		       "Memory=%lu TmpDisk=%u Uptime=%u CPUSpecList=%s",
+		       "Memory=%u TmpDisk=%u Uptime=%u CPUSpecList=%s",
 		       msg->cpus, msg->boards, msg->sockets, msg->cores,
 		       msg->threads, msg->real_memory, msg->tmp_disk,
 		       msg->up_time, msg->cpu_spec_list);
@@ -190,7 +189,7 @@ static int _sim_register_nodes_from_frontend_slurmd()
 static int _sim_kill_not_critical_threads()
 {
 	int error_code = SLURM_SUCCESS;
-	pthread_t tid_self=pthread_self();
+	//pthread_t tid_self=pthread_self();
 	//slurmctld_config.server_thread_count;
 	//slurmctld_config.thread_id_rpc;
 	//pthread_cancel
@@ -255,8 +254,8 @@ static int _sim_submit_job(job_trace_t* jobd)
 	submit_response_msg_t * respMsg = NULL;
 	int rv = 0;
 	char *script, line[1024];
-	uid_t uidt;
-	gid_t gidt;
+	//uid_t uidt;
+	//gid_t gidt;
 
 	script = xstrdup("#!/bin/bash\n");
 
@@ -285,7 +284,7 @@ static int _sim_submit_job(job_trace_t* jobd)
 	dmesg.ntasks_per_node = jobd->tasks_per_node;
 	//dmesg.duration      = jobd->duration;
 
-	dmesg.pn_min_memory = NO_VAL64;//jobd->pn_min_memory;
+	dmesg.pn_min_memory = jobd->pn_min_memory;
 	dmesg.features=xstrdup(jobd->features);
 	dmesg.gres=xstrdup(jobd->gres);
 	dmesg.shared=jobd->shared;
@@ -312,7 +311,7 @@ static int _sim_submit_job(job_trace_t* jobd)
 	job_desc_msg_t *req=&dmesg;
     slurm_msg_t req_msg;
     //slurm_msg_t resp_msg;
-	bool host_set = false;
+	//bool host_set = false;
 	char host[64];
 
 	slurm_msg_t_init(&req_msg);
@@ -328,13 +327,13 @@ static int _sim_submit_job(job_trace_t* jobd)
 	if ( (req->alloc_node == NULL)
 		&& (gethostname_short(host, sizeof(host)) == 0) ) {
 		req->alloc_node = host;
-		host_set  = true;
+		//host_set  = true;
 	}
 
 	req_msg.msg_type = REQUEST_SUBMIT_BATCH_JOB ;
 	req_msg.data     = req;
 
-	req_msg.auth_cred=g_slurm_auth_create(NULL);
+	req_msg.auth_cred=g_slurm_auth_create(NULL,2,slurm_get_auth_info());
 
 	int error_code=_sim_slurm_rpc_submit_batch_job(&req_msg);
 
@@ -388,7 +387,7 @@ extern void sim_agent_queue_request_joblaunch(struct job_record *job_ptr, batch_
 static int _sim_send_complete_batch_script_msg(uint32_t jobid, int err, int status)
 {
 	//_slurm_rpc_complete_batch_script(&req_msg, 0);
-	uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL), slurmctld_config.auth_info);
+	uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL,2,slurm_get_auth_info()), slurmctld_config.auth_info);
 
 	int error_code = job_complete(jobid, uid, false, false, SLURM_SUCCESS);
 	if(error_code!=SLURM_SUCCESS){
@@ -403,7 +402,7 @@ extern int sim_process_finished_jobs()
 {
 	int jobs_ended=0;
 	time_t now;
-	bool run_scheduler;
+	//bool run_scheduler;
 
 	now = time(NULL);
 	while ((head_simulator_event) &&
@@ -461,23 +460,9 @@ extern int sim_process_finished_jobs()
 		{
 			debug2("SIM: Sending REQUEST_CANCEL_JOB"
 							" for job %d", event_jid);
+			uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL,2,slurm_get_auth_info()), slurmctld_config.auth_info);
+			job_signal(event_jid, SIGKILL, 0, uid,false);
 
-
-			job_ptr->job_state	= JOB_CANCELLED;
-			job_ptr->start_time	= now;
-			job_ptr->end_time	= now;
-			srun_allocate_abort(job_ptr);
-			job_completion_logger(job_ptr, false);
-			/* Send back a response to the origin cluster, in other cases
-			 * where the job is running the job will send back a response
-			 * after the job is is completed. This can happen when the
-			 * pending origin job is put into a hold state and the siblings
-			 * are removed or when the job is canceled from the origin. */
-			fed_mgr_job_complete(job_ptr, 0, job_ptr->start_time);
-
-
-			debug2("SIM: REQUEST_CANCEL_JOB for "
-				"job %d SENT", event_jid);
 		}
 		remove_from_in_queue_trace_record(find_job__in_queue_trace_record(event_jid));
 
@@ -551,11 +536,11 @@ extern void schedule_plugin_run_once()
 		fprintf(fout, "\tLast queue length: %u\n", slurmctld_diag_stats.bf_queue_len);
 
 		fprintf(fout, "\tRun real time: %.6f\n", t);
-		fprintf(fout, "\tRun real utime: %lld\n",tms_utime);
-		fprintf(fout, "\tRun real stime: %lld\n",tms_stime);
-		fprintf(fout, "\tCLK_TCK: %d\n", sysconf (_SC_CLK_TCK));
-		fprintf(fout, "\tRun clock: %lld\n",st);
-		fprintf(fout, "\tCLOCKS_PER_SEC: %d\n",CLOCKS_PER_SEC);
+		fprintf(fout, "\tRun real utime: %ld\n",tms_utime);
+		fprintf(fout, "\tRun real stime: %ld\n",tms_stime);
+		fprintf(fout, "\tCLK_TCK: %ld\n", sysconf (_SC_CLK_TCK));
+		fprintf(fout, "\tRun clock: %ld\n",st);
+		fprintf(fout, "\tCLOCKS_PER_SEC: %ld\n",CLOCKS_PER_SEC);
 
 		fprintf(fout, "\tjobs_pending: %d\n",jobs_pending);
 		fprintf(fout, "\tjobs_running: %d\n",jobs_running);
@@ -582,9 +567,9 @@ int sim_schedule()
 
 	static time_t last_sched_time = 0;
 	static time_t last_full_sched_time = 0;
-	static time_t last_checkpoint_time = 0;
+	//static time_t last_checkpoint_time = 0;
 	static time_t last_purge_job_time = 0;
-	static time_t last_priority_calc_period = 0;
+	//static time_t last_priority_calc_period = 0;
 
 	time_t now;
 	now = time(NULL);
@@ -592,16 +577,16 @@ int sim_schedule()
 	if (last_sched_time == 0){
 		last_sched_time = now;
 		last_full_sched_time = now;
-		last_checkpoint_time = now;
+		//last_checkpoint_time = now;
 		last_purge_job_time = now;
 	}
 
 	/* Locks: Read config, write job, write node, read partition */
 	slurmctld_lock_t job_write_lock = {
-		READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
+		READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK };
 	/* Locks: Write job */
 	slurmctld_lock_t job_write_lock2 = {
-		NO_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK };
+		NO_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK };
 
 
 
@@ -696,12 +681,12 @@ int sim_schedule()
 			fprintf(fout, "\tLast queue length: %u\n", slurmctld_diag_stats.schedule_queue_len);
 
 			fprintf(fout, "\tRun real time: %.6f\n", t);
-			fprintf(fout, "\tRun real utime: %lld\n",tms_utime);
-			fprintf(fout, "\tRun real stime: %lld\n",tms_stime);
+			fprintf(fout, "\tRun real utime: %ld\n",tms_utime);
+			fprintf(fout, "\tRun real stime: %ld\n",tms_stime);
 
-			fprintf(fout, "\tCLK_TCK: %d\n", sysconf (_SC_CLK_TCK));
-			fprintf(fout, "\tRun clock: %lld\n",st);
-			fprintf(fout, "\tCLOCKS_PER_SEC: %d\n",CLOCKS_PER_SEC);
+			fprintf(fout, "\tCLK_TCK: %ld\n", sysconf (_SC_CLK_TCK));
+			fprintf(fout, "\tRun clock: %ld\n",st);
+			fprintf(fout, "\tCLOCKS_PER_SEC: %ld\n",CLOCKS_PER_SEC);
 
 			fprintf(fout, "\tjobs_pending: %d\n",jobs_pending);
 			fprintf(fout, "\tjobs_running: %d\n",jobs_running);
@@ -898,7 +883,7 @@ extern void sim_controller()
 			 * to have an impact on determinism
 			 */
 
-			debug("time_mgr: current %llu and next trace %ld",
+			debug("time_mgr: current %lu and next trace %ld",
 					*(sim_utime), trace_head->submit);
 
 			if (*(sim_utime)/1000000 >= trace_head->submit) {
@@ -906,7 +891,7 @@ extern void sim_controller()
 				/*job_trace_t *temp_ptr;*/
 
 				debug("[%d] time_mgr--current simulated time: "
-					   "%llu\n", __LINE__, *(sim_utime)/1000000);
+					   "%lu\n", __LINE__, *(sim_utime)/1000000);
 
 				insert_in_queue_trace_record(trace_head);
 

@@ -87,7 +87,7 @@ typedef struct job_trace {
     int  tasks_per_node;
     char *reservation;
     char *dependency;
-    uint64_t pn_min_memory;/* minimum real memory (in MB) per node OR
+    uint32_t pn_min_memory;/* minimum real memory (in MB) per node OR
      * real memory per CPU | MEM_PER_CPU,
      * NO_VAL use partition default,
      * default=0 (no limit) */

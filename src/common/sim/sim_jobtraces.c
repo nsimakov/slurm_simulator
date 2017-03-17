@@ -119,6 +119,9 @@ int _read_string(char **ps, FILE *trace_file)
 }
 #define read_string(v,f) _read_string(&(v),f)
 
+#define SIM_NEW_MEM_PER_CPU  0x8000000000000000
+#define SIM_OLD_MEM_PER_CPU  0x80000000
+
 job_trace_t* read_single_trace(FILE *trace_file)
 {
 	job_trace_t *trace = (job_trace_t*)calloc(1,sizeof(job_trace_t));
@@ -140,7 +143,20 @@ job_trace_t* read_single_trace(FILE *trace_file)
 	read_single_var(trace->tasks_per_node,trace_file);
 	read_string(trace->reservation, trace_file);
 	read_string(trace->dependency, trace_file);
-	read_single_var(trace->pn_min_memory,trace_file);
+	uint64_t pn_min_memory;
+	read_single_var(pn_min_memory,trace_file);
+	if(pn_min_memory==NO_VAL64){
+		trace->pn_min_memory=NO_VAL;
+	}else{
+		uint64_t req_mem=pn_min_memory & (~SIM_NEW_MEM_PER_CPU);
+		uint64_t req_mem_per_cpu=pn_min_memory & SIM_NEW_MEM_PER_CPU;
+
+		trace->pn_min_memory=(uint32_t)req_mem;
+		if(req_mem_per_cpu){
+			trace->pn_min_memory=trace->pn_min_memory|SIM_OLD_MEM_PER_CPU;
+		}
+	}
+
 	read_string(trace->features, trace_file);
 	read_string(trace->gres, trace_file);
 	read_single_var(trace->shared,trace_file);
