@@ -158,6 +158,9 @@ extern void sim_free_simulator_event(simulator_event_t *event);
 
 extern int sim_add_future_event(batch_job_launch_msg_t *req);
 
+extern simulator_event_t *head_simulator_cancel_event;
+extern int sim_add_future_cancel_event(job_trace_t *trace);
+
 /******************************************************************************
  * Operation on simulated time
  ******************************************************************************/

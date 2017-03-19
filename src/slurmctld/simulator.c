@@ -345,6 +345,10 @@ static int _sim_submit_job(job_trace_t* jobd)
 		info("Failed submission of job to queue, error_code: %u job_id: %u",
 				error_code, dmesg.job_id);
 
+	/* add to cancel event if job needed to be cancelled */
+	if(jobd->cancelled>0)
+		sim_add_future_cancel_event(jobd);
+
 	/* Cleanup */
 	if (respMsg) slurm_free_submit_response_response_msg(respMsg);
 	if (script) xfree(script);
@@ -421,49 +425,40 @@ extern int sim_process_finished_jobs()
 		//--total_sim_events;
 		(*sim_jobs_done)++;
 
-		struct job_record *job_ptr = find_job_record(event_jid);
-
-		if(aux->type==REQUEST_COMPLETE_BATCH_SCRIPT || IS_JOB_RUNNING(job_ptr))
-		{
-			debug2("SIM: Sending JOB_COMPLETE_BATCH_SCRIPT"
-				" for job %d", event_jid);
-
-			//pthread_mutex_unlock(&simulator_mutex);
-			_sim_send_complete_batch_script_msg(event_jid,
-				SLURM_SUCCESS, 0);
-			//pthread_mutex_lock(&simulator_mutex);
-
-			slurm_msg_t            msg;
-			epilog_complete_msg_t  req;
-
-			slurm_msg_t_init(&msg);
+		//struct job_record *job_ptr = find_job_record(event_jid);
 
 
-			req.job_id      = event_jid;
-			req.return_code = SLURM_SUCCESS;
-			req.node_name   = "localhost";
+		debug2("SIM: Sending JOB_COMPLETE_BATCH_SCRIPT"
+			" for job %d", event_jid);
 
-			msg.msg_type    = MESSAGE_EPILOG_COMPLETE;
-			msg.data        = &req;
+		//pthread_mutex_unlock(&simulator_mutex);
+		_sim_send_complete_batch_script_msg(event_jid,
+			SLURM_SUCCESS, 0);
+		//pthread_mutex_lock(&simulator_mutex);
 
-			//_slurm_rpc_epilog_complete(&msg, (bool *)&run_scheduler, 0);
-			if(job_epilog_complete(req.job_id, req.node_name,req.return_code)){
+		slurm_msg_t            msg;
+		epilog_complete_msg_t  req;
 
-			}else{
-				info("ERROR:SIM: can not job_epilog_complete for job %d",event_jid);
-			}
+		slurm_msg_t_init(&msg);
 
-			debug2("SIM: JOB_COMPLETE_BATCH_SCRIPT for "
-				"job %d SENT", event_jid);
+
+		req.job_id      = event_jid;
+		req.return_code = SLURM_SUCCESS;
+		req.node_name   = "localhost";
+
+		msg.msg_type    = MESSAGE_EPILOG_COMPLETE;
+		msg.data        = &req;
+
+		//_slurm_rpc_epilog_complete(&msg, (bool *)&run_scheduler, 0);
+		if(job_epilog_complete(req.job_id, req.node_name,req.return_code)){
+
+		}else{
+			info("ERROR:SIM: can not job_epilog_complete for job %d",event_jid);
 		}
-		else if(aux->type==REQUEST_CANCEL_JOB)
-		{
-			debug2("SIM: Sending REQUEST_CANCEL_JOB"
-							" for job %d", event_jid);
-			uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL,2,slurm_get_auth_info()), slurmctld_config.auth_info);
-			job_signal(event_jid, SIGKILL, 0, uid,false);
 
-		}
+		debug2("SIM: JOB_COMPLETE_BATCH_SCRIPT for "
+			"job %d SENT", event_jid);
+
 		remove_from_in_queue_trace_record(find_job__in_queue_trace_record(event_jid));
 
 		++jobs_ended;
@@ -471,7 +466,44 @@ extern int sim_process_finished_jobs()
 	}
 	return jobs_ended;
 }
+/*
+ * return number of cancelled jobs
+ */
+extern int sim_cancel_jobs()
+{
+	int jobs_cancelled=0;
+	time_t now;
+	//bool run_scheduler;
 
+	now = time(NULL);
+	while ((head_simulator_cancel_event) &&
+			(now >= head_simulator_cancel_event->when)) {
+
+		simulator_event_t *aux;
+		int event_jid;
+
+		event_jid               = head_simulator_cancel_event->job_id;
+		aux                     = head_simulator_cancel_event;
+		head_simulator_cancel_event    = head_simulator_cancel_event->next;
+
+
+		struct job_record *job_ptr = find_job_record(event_jid);
+
+		//if job is already running it will be cancelled by sim_process_finished_jobs
+		if(!IS_JOB_RUNNING(job_ptr))
+		{
+			(*sim_jobs_done)++;
+			debug2("SIM: Sending REQUEST_CANCEL_JOB for job %d", event_jid);
+			uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL,2,slurm_get_auth_info()), slurmctld_config.auth_info);
+			job_signal(event_jid, SIGKILL, 0, uid,false);
+
+			remove_from_in_queue_trace_record(find_job__in_queue_trace_record(event_jid));
+
+			++jobs_cancelled;
+		}
+	}
+	return jobs_cancelled;
+}
 /* execure scheduler from schedule_plugin */
 extern void schedule_plugin_run_once()
 {
@@ -918,6 +950,7 @@ extern void sim_controller()
 			run_scheduler=1;
 			job_finished=1;
 		}
+		sim_cancel_jobs();
 		run_scheduler=1;
 
 		//

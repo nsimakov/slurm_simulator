@@ -101,10 +101,11 @@ extern int sim_add_future_event(batch_job_launch_msg_t *req)
 	new_event->job_id = req->job_id;
 	if(trace->cancelled > 0){
 		new_event->type = REQUEST_CANCEL_JOB;
+		new_event->when = trace->cancelled;
 	} else {
 		new_event->type = REQUEST_COMPLETE_BATCH_SCRIPT;
+		new_event->when = now + trace->duration;
 	}
-	new_event->when = now + trace->duration;
 	new_event->next = NULL;
 
 	_sim_insert_event(new_event);
@@ -112,4 +113,51 @@ extern int sim_add_future_event(batch_job_launch_msg_t *req)
 	return 0;
 }
 
+
+simulator_event_t *head_simulator_cancel_event=NULL;
+void _sim_insert_cancel_event(simulator_event_t *new_event)
+{
+	if (!head_simulator_cancel_event) {
+		debug3("SIM: Adding new cancel_event for job %d when list is empty "
+		     "for future time %ld!",
+		     new_event->job_id, new_event->when);
+		head_simulator_cancel_event = new_event;
+	} else {
+		simulator_event_t *node_temp = head_simulator_cancel_event;
+		debug3("SIM: Adding new event for job %d in the event listi "
+		     "for future time %ld", new_event->job_id, new_event->when);
+
+		if(head_simulator_cancel_event->when > new_event->when){
+			new_event->next = head_simulator_cancel_event;
+			head_simulator_cancel_event = new_event;
+			return;
+		}
+
+		while ((node_temp->next) &&
+				(node_temp->next->when < new_event->when))
+			node_temp = node_temp->next;
+
+		if(node_temp->next){
+			new_event->next = node_temp->next;
+			node_temp->next = new_event;
+			return;
+		}
+		node_temp->next = new_event;
+	}
+}
+
+extern int sim_add_future_cancel_event(job_trace_t *trace)
+{
+	simulator_event_t  *new_event;
+	new_event = sim_alloc_simulator_event();
+
+	new_event->job_id = trace->job_id;
+	new_event->type = REQUEST_CANCEL_JOB;
+	new_event->when = trace->cancelled;
+	new_event->next = NULL;
+
+	_sim_insert_cancel_event(new_event);
+
+	return 0;
+}
 #endif
