@@ -488,16 +488,22 @@ extern int sim_cancel_jobs()
 
 
 		struct job_record *job_ptr = find_job_record(event_jid);
+		job_trace_t* trace = find_job__in_queue_trace_record(event_jid);
 
+		if(job_ptr==NULL && trace!=NULL)
+		{
+			error("trying to cancell job %d but it is not in queue but still in in_queue_trace_record",event_jid);
+			remove_from_in_queue_trace_record(trace);
+		}
 		//if job is already running it will be cancelled by sim_process_finished_jobs
-		if(!IS_JOB_RUNNING(job_ptr))
+		if(job_ptr!=NULL && !IS_JOB_RUNNING(job_ptr))
 		{
 			(*sim_jobs_done)++;
 			debug2("SIM: Sending REQUEST_CANCEL_JOB for job %d", event_jid);
 			uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL,2,slurm_get_auth_info()), slurmctld_config.auth_info);
 			job_signal(event_jid, SIGKILL, 0, uid,false);
 
-			remove_from_in_queue_trace_record(find_job__in_queue_trace_record(event_jid));
+			remove_from_in_queue_trace_record(trace);
 
 			++jobs_cancelled;
 		}
@@ -507,41 +513,15 @@ extern int sim_cancel_jobs()
 /* execure scheduler from schedule_plugin */
 extern void schedule_plugin_run_once()
 {
-	int jobs_pending=0;
-	int jobs_running=0;
-
-	int nodes_idle=0;
-	int nodes_mixed=0;
-	int nodes_allocated=0;
-
-	if(slurm_sim_conf->sim_stat!=NULL){
-		ListIterator job_iterator;
-		struct job_record *job_ptr;
-
-
-		job_iterator = list_iterator_create(job_list);
-		while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
-			if(IS_JOB_PENDING(job_ptr))jobs_pending++;
-			if(IS_JOB_RUNNING(job_ptr))jobs_running++;
-		}
-		list_iterator_destroy(job_iterator);
-
-		int inx;
-		struct node_record *node_ptr = node_record_table_ptr;
-		for (inx = 0; inx < node_record_count; inx++, node_ptr++) {
-			if(IS_NODE_IDLE(node_ptr))nodes_idle++;
-			if(IS_NODE_MIXED(node_ptr))nodes_mixed++;
-			if(IS_NODE_ALLOCATED(node_ptr))nodes_allocated++;
-		}
-	}
+	int backfill_was_ran=0;
 
 	double t=get_realtime();
 	struct tms m_tms0,m_tms1;
 
 	clock_t st=clock();
 	times(&m_tms0);
-	if (sim_sched_plugin_attempt_sched_ref!=NULL){
-		(*sim_sched_plugin_attempt_sched_ref)();
+	if (sim_backfill_agent_ref!=NULL){
+		backfill_was_ran=(*sim_backfill_agent_ref)();
 	} else {
 		info("Error: sched_plugin do not support simulator");
 	}
@@ -552,7 +532,36 @@ extern void schedule_plugin_run_once()
 	clock_t tms_utime=m_tms1.tms_utime-m_tms0.tms_utime;
 	clock_t tms_stime=m_tms1.tms_stime-m_tms0.tms_stime;
 
-	if(slurm_sim_conf->sim_stat!=NULL){
+	if(backfill_was_ran && slurm_sim_conf->sim_stat!=NULL){
+		int jobs_pending=0;
+		int jobs_running=0;
+
+		int nodes_idle=0;
+		int nodes_mixed=0;
+		int nodes_allocated=0;
+
+		if(slurm_sim_conf->sim_stat!=NULL){
+			ListIterator job_iterator;
+			struct job_record *job_ptr;
+
+
+			job_iterator = list_iterator_create(job_list);
+			while ((job_ptr = (struct job_record *) list_next(job_iterator))) {
+				if(IS_JOB_PENDING(job_ptr))jobs_pending++;
+				if(IS_JOB_RUNNING(job_ptr))jobs_running++;
+			}
+			list_iterator_destroy(job_iterator);
+
+			int inx;
+			struct node_record *node_ptr = node_record_table_ptr;
+			for (inx = 0; inx < node_record_count; inx++, node_ptr++) {
+				if(IS_NODE_IDLE(node_ptr))nodes_idle++;
+				if(IS_NODE_MIXED(node_ptr))nodes_mixed++;
+				if(IS_NODE_ALLOCATED(node_ptr))nodes_allocated++;
+			}
+		}
+
+
 		FILE *fout=fopen(slurm_sim_conf->sim_stat,"at");
 		if(fout==NULL)
 			return;
@@ -581,6 +590,9 @@ extern void schedule_plugin_run_once()
 		fprintf(fout, "\tnodes_allocated: %d\n",nodes_allocated);
 
 		fclose(fout);
+	}
+	if(backfill_was_ran && slurm_sim_conf->sdiag_mini_file_out!=NULL){
+		sim_sdiag_mini();
 	}
 
 }
@@ -980,8 +992,10 @@ extern void sim_controller()
 			//if(jobs_scheduled==0)
 			//	run_scheduler=0;
 		//}
-		//plugin schedule e.g. backfill
-		cur_time=time(NULL);
+
+		//try to run backfill
+		schedule_plugin_run_once();
+		/*cur_time=time(NULL);
 		if(new_job_submitted+job_finished){
 			schedule_plugin_next_sleeptype=0;//i.e. short
 		}
@@ -1010,7 +1024,7 @@ extern void sim_controller()
 
 			//if(schedule_plugin_last_depth_try==0 && schedule_plugin_sleeptype==1)
 			//	schedule_plugin_sleeptype=2;
-		}
+		}*/
 
 		//last_db_inx_handler_call
 		if(sim_db_inx_handler_call_once!=NULL && last_db_inx_handler_call-time(NULL)>5){

@@ -1158,10 +1158,6 @@ next_task:
 		job_test_count++;
 		slurmctld_diag_stats.bf_last_depth++;
 		already_counted = false;
-#ifdef SLURM_SIMULATOR
-		sim_scale_clock(cycle_start_sim_utime,2*22.25);
-		cycle_start_sim_utime=get_sim_utime();
-#endif
 
 		if (!IS_JOB_PENDING(job_ptr) ||	/* Started in other partition */
 		    (job_ptr->priority == 0))	/* Job has been held */
@@ -1492,6 +1488,21 @@ next_task:
 		if (!already_counted) {
 			slurmctld_diag_stats.bf_last_depth_try++;
 			already_counted = true;
+
+#ifdef SLURM_SIMULATOR
+		double b_dev_a=3.388602e-06/0.0001000109;
+		int n=slurmctld_diag_stats.bf_last_depth_try;
+		int nm1=n-1;
+		int n2=n*n;
+		int n3=n2*n;
+		int nm1_2=nm1*nm1;
+		int nm1_3=nm1_2*nm1;
+		double nom=(double)(n3-nm1_3);
+		double denom=(double)(n2-nm1_2);
+		sim_scale_clock(cycle_start_sim_utime,b_dev_a*nom/denom);
+		cycle_start_sim_utime=get_sim_utime();
+#endif
+
 		}
 		if (debug_flags & DEBUG_FLAG_BACKFILL_MAP)
 			_dump_job_test(job_ptr, avail_bitmap, start_res);
@@ -2064,19 +2075,58 @@ static bool _test_resv_overlap(node_space_map_t *node_space,
 
 
 #ifdef SLURM_SIMULATOR
-/* call _load_config for backfill in simulation mode */
-extern void sim_sched_plugin_load_config(void)
+/* fake backfill_agent called from simulation main loop
+ * if the time right do backfill if not return the control
+ * return 1 if backfill was executed 0 if not*/
+extern int sim_backfill_agent(void)
 {
-	_load_config();
-}
-/* call _attempt_backfill for backfill in simulation mode */
-extern void sim_sched_plugin_attempt_backfill(void)
-{
+	time_t now=time(NULL);
+	double wait_time;
+	static time_t last_backfill_time = 0;
+	static time_t next_backfill_time = 0;
+	static bool load_config = true;
+	static bool short_sleep = false;
+
 	slurmctld_lock_t all_locks = {
-			READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK };
-	lock_slurmctld(all_locks);
-	(void) _attempt_backfill();
-	(void) bb_g_job_try_stage_in();
-	unlock_slurmctld(all_locks);
+				READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK };
+
+	int run_backfill=0;
+
+	if(load_config == true){
+		_load_config();
+		config_flag = false;
+		load_config = false;
+	}
+
+	if(next_backfill_time<now){
+		//agent kinda awaken from sleep
+		run_backfill=1;
+
+		//if nothing interesting happence lets sleep more
+		wait_time = difftime(now, last_backfill_time);
+		if ((wait_time < backfill_interval) || !_more_work(last_backfill_time)) {
+			short_sleep = true;
+			run_backfill=0;
+		}
+
+		//run backfill
+		if(run_backfill == 1){
+			lock_slurmctld(all_locks);
+			(void) _attempt_backfill();
+			last_backfill_time = time(NULL);
+			(void) bb_g_job_try_stage_in();
+			unlock_slurmctld(all_locks);
+			short_sleep = false;
+		}
+
+		//next time to attempt backfill
+		now=time(NULL);
+		if(short_sleep == true){
+			next_backfill_time=now+1;
+		}else{
+			next_backfill_time=now+backfill_interval;
+		}
+	}
+	return run_backfill;
 }
 #endif

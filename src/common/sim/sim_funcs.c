@@ -50,7 +50,7 @@ char            * libc_paths[4] = {"/lib/x86_64-linux-gnu/libc.so.6",
 extern char     * default_slurm_config_file;
 
 /* reference to sched_plugin */
-void (*sim_sched_plugin_attempt_sched_ref)(void)=NULL;
+int (*sim_backfill_agent_ref)(void)=NULL;
 
 int (*sim_db_inx_handler_call_once)()=NULL;
 

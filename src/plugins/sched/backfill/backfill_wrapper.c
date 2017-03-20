@@ -62,9 +62,8 @@ static pthread_t backfill_thread = 0;
 static pthread_mutex_t thread_flag_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef SLURM_SIMULATOR
-extern int (*sim_sched_plugin_attempt_sched_ref)(void);
-extern void sim_sched_plugin_load_config(void);
-extern void sim_sched_plugin_attempt_backfill(void);
+extern int (*sim_backfill_agent_ref)(void);
+extern int sim_backfill_agent(void);
 #endif
 
 int init( void )
@@ -87,10 +86,10 @@ int init( void )
 #ifdef SLURM_SIMULATOR
 	/* in simulation mode we call backfill from simulation main loop */
 	backfill_thread=1;
-	sim_sched_plugin_load_config();
 
 	/*save the function to call backfill once */
-	sim_sched_plugin_attempt_sched_ref=sim_sched_plugin_attempt_backfill;
+	sim_backfill_agent_ref=sim_backfill_agent;
+	//sim_sched_plugin_attempt_sched_ref=sim_sched_plugin_attempt_backfill;
 	return SLURM_SUCCESS;
 #endif
 
