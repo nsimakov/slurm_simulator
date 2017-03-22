@@ -591,7 +591,7 @@ extern void schedule_plugin_run_once()
 
 		fclose(fout);
 	}
-	if(backfill_was_ran && slurm_sim_conf->sdiag_mini_file_out!=NULL){
+	if(backfill_was_ran && slurm_sim_conf->sdiag_file_out!=NULL){
 		sim_sdiag_mini();
 	}
 
@@ -749,13 +749,13 @@ int sim_schedule()
 
 	return jobs_scheduled;
 }
-/*copy of printour from sdiag*/
+/*printout like from sdiag*/
 void sim_sdiag_mini()
 {
-	if(slurm_sim_conf->sdiag_mini_file_out==NULL)
+	if(slurm_sim_conf->sdiag_file_out==NULL)
 		return;
 
-	FILE *fout=fopen(slurm_sim_conf->sdiag_mini_file_out,"at");
+	FILE *fout=fopen(slurm_sim_conf->sdiag_file_out,"at");
 	if(fout==NULL)
 		return;
 
@@ -824,6 +824,101 @@ void sim_sdiag_mini()
 	fclose(fout);
 }
 
+static double sim_sprio_mini_get_priority(priority_factors_object_t *prio_factors)
+{
+	int i = 0;
+	double priority = prio_factors->priority_age
+		+ prio_factors->priority_fs
+		+ prio_factors->priority_js
+		+ prio_factors->priority_part
+		+ prio_factors->priority_qos
+		- (double)((int64_t)prio_factors->nice - NICE_OFFSET);
+
+	for (i = 0; i < prio_factors->tres_cnt; i++) {
+		if (!prio_factors->priority_tres[i])
+			continue;
+		priority += prio_factors->priority_tres[i];
+	}
+
+	/* Priority 0 is reserved for held jobs */
+        if (priority < 1)
+                priority = 1;
+
+	return priority;
+}
+
+/*printout like from sdiag*/
+void sim_sprio()
+{
+	if(slurm_sim_conf->sprio_file_out==NULL)
+		return;
+
+	slurm_ctl_conf_t *slurm_conf=&slurmctld_conf;
+	char *prio_type   = xstrdup(slurm_conf->priority_type);
+
+	if (xstrcasecmp(prio_type, "priority/basic") == 0) {
+		FILE *fout=fopen(slurm_sim_conf->sprio_file_out,"at");
+		fprintf (fout, "You are not running a supported "
+			 "priority plugin\n(%s).\n"
+			 "Only 'priority/multifactor' is supported.\n",
+			 prio_type);
+		fclose(fout);
+		return;
+	}
+
+	priority_factors_request_msg_t req_msg;
+	memset(&req_msg, 0, sizeof(priority_factors_request_msg_t));
+
+	List priority_factors_list=priority_g_get_priority_factors_list(&req_msg,0);
+
+
+	FILE *fout=fopen(slurm_sim_conf->sprio_file_out,"at");
+	if(fout==NULL)
+		return;
+
+	time_t now = time(NULL);
+
+	fprintf(fout, "###############################################################################\n");
+	fprintf(fout, "t: %s", ctime(&now));
+	fprintf(fout, "          JOBID     USER   PRIORITY        AGE  FAIRSHARE    JOBSIZE  PARTITION        QOS        NICE                 TRES\n");
+
+	if(priority_factors_list!=NULL){
+		ListIterator itr;
+
+		itr = list_iterator_create(priority_factors_list);
+		priority_factors_object_t * job;
+		while ((job = list_next(itr))) {
+			char *values = xstrdup("");
+			int i = 0;
+
+			for (i = 0; i < job->tres_cnt; i++) {
+				if (!job->priority_tres[i])
+					continue;
+				if (values[0])
+					xstrcat(values, ",");
+				xstrfmtcat(values, "%s=%.2f", job->tres_names[i],
+					   job->priority_tres[i]/job->tres_weights[i]);
+			}
+
+
+			fprintf(fout,"%15u %8s %10.0f %10.0f %10.0f %10.0f %10.0f %10.0f %11ld %20s\n",
+					job->job_id,
+					uid_to_string_cached(job->user_id),
+					sim_sprio_mini_get_priority(job),
+					job->priority_age,
+					job->priority_fs,
+					job->priority_js,
+					job->priority_part,
+					job->priority_qos,
+					(int64_t)job->nice - NICE_OFFSET,
+					values);
+			xfree(values);
+		}
+		list_iterator_destroy(itr);
+	}
+
+	fclose(fout);
+}
 
 extern diag_stats_t slurmctld_diag_stats;
 
@@ -837,7 +932,7 @@ extern void sim_controller()
 	//read job traces
 	sim_read_job_trace(slurm_sim_conf->jobs_trace_file);
 	if(trace_head!=NULL){
-		*sim_utime = (trace_head->submit-3)*1000000;
+		*sim_utime = (trace_head->submit-slurm_sim_conf->start_seconds_before_first_job)*1000000;
 	}
 
 	//kill threads which are not impotent for simulation
@@ -877,6 +972,8 @@ extern void sim_controller()
 		(*sim_run_priority_decay)();
 		last_priority_calc_period=time(NULL);
 	}
+
+	uint32_t next_sprio=0;
 
 	while(1)
 	{
@@ -1031,6 +1128,14 @@ extern void sim_controller()
 			(*sim_db_inx_handler_call_once)();
 			last_db_inx_handler_call=time(NULL);
 		}
+
+		//do outputs
+		cur_time=time(NULL);
+		if(slurm_sim_conf->sprio_period!=0 && slurm_sim_conf->sprio_file_out!=NULL && cur_time>next_sprio){
+			next_sprio=(cur_time/slurm_sim_conf->sprio_period+1)*slurm_sim_conf->sprio_period;
+			sim_sprio();
+		}
+
 
 		//int sched_dur=time(NULL)-scheduler_time
 		//update time
