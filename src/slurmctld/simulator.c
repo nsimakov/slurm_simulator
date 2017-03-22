@@ -264,7 +264,8 @@ static int _sim_submit_job(job_trace_t* jobd)
 	/* Set up and call Slurm C-API for actual job submission. */
 	dmesg.time_limit    = jobd->wclimit;
 	dmesg.job_id        = jobd->job_id;
-	dmesg.name	    = xstrdup("sim_job");
+	sprintf(line,"%d", jobd->job_id);
+	dmesg.name	    = xstrdup(line);
 	sim_user_info_t *user_info=get_sim_user_by_name(jobd->username);
 	if(user_info==NULL){
 		info("Error:SIM: unknown user for simulator: %s",jobd->username);
