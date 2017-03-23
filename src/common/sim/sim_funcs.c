@@ -174,10 +174,10 @@ extern void sim_pause_clock()
 	clock_ticking=0;
 }
 
-extern void sim_incr_clock(int seconds)
+extern void sim_incr_clock(int microseconds)
 {
 	if(clock_ticking==0)
-		*sim_utime=*sim_utime+seconds*1000000;
+		*sim_utime=*sim_utime+microseconds;
 }
 extern void sim_scale_clock(uint64_t start_sim_utime,double scale)
 {
