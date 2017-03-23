@@ -25244,7 +25244,7 @@ fi
   if test "$x_ac_simulator" = yes; then
     test "$GCC" = yes && CFLAGS="$CFLAGS -DSLURM_SIMULATOR"
     test "$GXX" = yes && CXXFLAGS="$CXXFLAGS -DSLURM_SIMULATOR"
-    LIBS="$LIBS -lrt"
+    LIBS="$LIBS -lrt -lm"
 
 $as_echo "#define SLURM_SIMULATOR 1" >>confdefs.h
 

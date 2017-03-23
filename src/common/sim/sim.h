@@ -30,6 +30,10 @@ typedef struct slurm_sim_conf {
 	uint32_t    squeue_period;
 	char *      squeue_file_out; /* location of file for squeue output */
 	char *      sim_stat; /*sim stat output*/
+	double      bf_model_real_prefactor;
+	double      bf_model_real_power;
+	double      bf_model_sim_prefactor;
+	double      bf_model_sim_power;
 } slurm_sim_conf_t;
 
 /* simulator configuration */
@@ -176,11 +180,16 @@ extern int sim_add_future_cancel_event(job_trace_t *trace);
 extern void sim_resume_clock();
 extern void sim_pause_clock();
 extern void sim_incr_clock(int seconds);
-extern void sim_scale_clock(uint64_t start_sim_utime,float scale);
+extern void sim_scale_clock(uint64_t start_sim_utime,double scale);
 extern void sim_set_time(time_t unix_time);
 extern unsigned int sim_sleep (unsigned int __seconds);
 extern uint64_t get_sim_utime();
 extern double get_realtime();
+extern uint64_t get_real_utime();
+extern void sim_set_new_time(uint64_t new_sim_utime);
+
+extern void sim_backfill_step_scale(uint64_t start_sim_utime,uint64_t start_real_utime,int n);
+extern void sim_backfill_scale(uint64_t start_sim_utime,uint64_t start_real_utime,int n);
 
 /******************************************************************************
  * Calls to actual function which was substitute for simulation

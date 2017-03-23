@@ -103,6 +103,14 @@ double get_realtime()
 
 	return t;
 }
+uint64_t get_real_utime()
+{
+	struct timeval cur_real_time;
+	uint64_t cur_real_utime;
+	real_gettimeofday(&cur_real_time,NULL);
+	cur_real_utime=cur_real_time.tv_sec*1000000+cur_real_time.tv_usec;
+	return cur_real_utime;
+}
 int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
 	init_shared_memory_if_needed();
@@ -171,7 +179,7 @@ extern void sim_incr_clock(int seconds)
 	if(clock_ticking==0)
 		*sim_utime=*sim_utime+seconds*1000000;
 }
-extern void sim_scale_clock(uint64_t start_sim_utime,float scale)
+extern void sim_scale_clock(uint64_t start_sim_utime,double scale)
 {
 	if(clock_ticking){
 		uint64_t cur_sim_utime=get_sim_utime();
@@ -181,7 +189,65 @@ extern void sim_scale_clock(uint64_t start_sim_utime,float scale)
 		ref_utime=ref_utime-(new_dutime-cur_dutime);
 	}
 }
+extern void sim_set_new_time(uint64_t new_sim_utime)
+{
+	if(clock_ticking){
+		uint64_t cur_sim_utime=get_sim_utime();
+		int64_t dutime=new_sim_utime-cur_sim_utime;
 
+		ref_utime=ref_utime-dutime;
+	}else{
+		*sim_utime=new_sim_utime;
+	}
+}
+double bf_model(double prefactor,double power,double n)
+{
+	return prefactor*pow(n,power);
+}
+double bf_step_model(double prefactor,double power,double n)
+{
+	return prefactor*(pow(n,power)-pow(n-1,power));
+}
+extern void sim_backfill_step_scale(uint64_t start_sim_utime,uint64_t start_real_utime,int n)
+{
+	if(n==0)
+		return;
+	uint64_t cur_real_utime=get_real_utime();
+	uint64_t cur_sim_utime=get_sim_utime();
+
+	double real_dt=cur_real_utime-start_real_utime;
+
+	double scale=bf_step_model(slurm_sim_conf->bf_model_real_prefactor,slurm_sim_conf->bf_model_real_power,(double)n)/
+			     bf_step_model(slurm_sim_conf->bf_model_sim_prefactor,slurm_sim_conf->bf_model_sim_power,(double)n);
+
+	double sim_dt=scale*real_dt;
+
+	uint64_t new_sim_utime=start_sim_utime+(int)round(sim_dt);
+
+	if(new_sim_utime>cur_sim_utime)
+		sim_set_new_time(new_sim_utime);
+}
+
+
+extern void sim_backfill_scale(uint64_t start_sim_utime,uint64_t start_real_utime,int n)
+{
+	if(n==0)
+		return;
+	uint64_t cur_real_utime=get_real_utime();
+	uint64_t cur_sim_utime=get_sim_utime();
+
+	double real_dt=cur_real_utime-start_real_utime;
+
+	double scale=bf_model(slurm_sim_conf->bf_model_real_prefactor,slurm_sim_conf->bf_model_real_power,(double)n)/
+			     bf_model(slurm_sim_conf->bf_model_sim_prefactor,slurm_sim_conf->bf_model_sim_power,(double)n);
+
+	double sim_dt=scale*real_dt;
+
+	uint64_t new_sim_utime=start_sim_utime+(int)round(sim_dt);
+
+	if(new_sim_utime>cur_sim_utime)
+		sim_set_new_time(new_sim_utime);
+}
 extern void sim_set_time(time_t unix_time)
 {
 	struct timeval ref_timeval;

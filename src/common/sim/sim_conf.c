@@ -46,8 +46,11 @@ extern int sim_read_sim_conf(void)
 		{"sinfoFileOut", S_P_STRING},
 		{"squeuePeriod", S_P_UINT32},
 		{"squeueFileOut", S_P_STRING},
-
 		{"SimStats", S_P_STRING},
+		{"bf_model_real_prefactor", S_P_DOUBLE},
+		{"bf_model_real_power", S_P_DOUBLE},
+		{"bf_model_sim_prefactor", S_P_DOUBLE},
+		{"bf_model_sim_power", S_P_DOUBLE},
 		{NULL} };
 	s_p_hashtbl_t *tbl = NULL;
 	char *conf_path = NULL;
@@ -74,6 +77,11 @@ extern int sim_read_sim_conf(void)
 	slurm_sim_conf->squeue_period=0;
 	slurm_sim_conf->squeue_file_out=NULL;
 
+	slurm_sim_conf->bf_model_real_prefactor=1.0;
+	slurm_sim_conf->bf_model_real_power=1.0;
+	slurm_sim_conf->bf_model_sim_prefactor=1.0;
+	slurm_sim_conf->bf_model_sim_power=1.0;
+
 	/* Get the slurmdbd.conf path and validate the file */
 	conf_path = get_extra_conf_path("sim.conf");
 	if ((conf_path == NULL) || (stat(conf_path, &buf) == -1)) {
@@ -97,7 +105,7 @@ extern int sim_read_sim_conf(void)
 			slurm_sim_conf->sim_stat = NULL;
 
 		s_p_get_uint32(&slurm_sim_conf->time_start, "TimeStart", tbl);
-		s_p_get_uint32(&slurm_sim_conf->start_seconds_before_first_job, "StartSecondsBeforeFirstJob", tbl);
+		s_p_get_long(&slurm_sim_conf->start_seconds_before_first_job, "StartSecondsBeforeFirstJob", tbl);
 		s_p_get_uint32(&slurm_sim_conf->time_stop, "TimeStop", tbl);
 		s_p_get_uint32(&slurm_sim_conf->time_step, "TimeStep", tbl);
 		s_p_get_uint32(&slurm_sim_conf->after_job_launch_time_increament, "AfterJobLaunchTimeIncreament", tbl);
@@ -113,7 +121,10 @@ extern int sim_read_sim_conf(void)
 		s_p_get_uint32(&slurm_sim_conf->squeue_period, "squeuePeriod", tbl);
 		s_p_get_string(&slurm_sim_conf->squeue_file_out, "squeueFileOut", tbl);
 
-
+		s_p_get_double(&slurm_sim_conf->bf_model_real_prefactor, "bf_model_real_prefactor", tbl);
+		s_p_get_double(&slurm_sim_conf->bf_model_real_power, "bf_model_real_power", tbl);
+		s_p_get_double(&slurm_sim_conf->bf_model_sim_prefactor, "bf_model_sim_prefactor", tbl);
+		s_p_get_double(&slurm_sim_conf->bf_model_sim_power, "bf_model_sim_power", tbl);
 
 		s_p_hashtbl_destroy(tbl);
 	}

@@ -31,7 +31,7 @@ AC_DEFUN([X_AC_SIMULATOR], [
   if test "$x_ac_simulator" = yes; then
     test "$GCC" = yes && CFLAGS="$CFLAGS -DSLURM_SIMULATOR"
     test "$GXX" = yes && CXXFLAGS="$CXXFLAGS -DSLURM_SIMULATOR"
-    LIBS="$LIBS -lrt"
+    LIBS="$LIBS -lrt -lm"
     AC_DEFINE([SLURM_SIMULATOR],[1],
       [Define SLURM_SIMULATOR if you are building slurm in simulator mode.]
     )

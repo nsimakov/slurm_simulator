@@ -1005,7 +1005,10 @@ static int _attempt_backfill(void)
 		njobs = xmalloc(BF_MAX_USERS * sizeof(uint16_t));
 	}
 #ifdef SLURM_SIMULATOR
-		uint64_t cycle_start_sim_utime=get_sim_utime();
+	uint64_t bf_start_real_utime=get_real_utime();
+	uint64_t bf_start_sim_utime=get_sim_utime();
+	uint64_t cycle_start_real_utime=bf_start_real_utime;
+	uint64_t cycle_start_sim_utime=bf_start_sim_utime;
 #endif
 	sort_job_queue(job_queue);
 	while (1) {
@@ -1490,16 +1493,8 @@ next_task:
 			already_counted = true;
 
 #ifdef SLURM_SIMULATOR
-		double b_dev_a=3.388602e-06/0.0001000109;
-		int n=slurmctld_diag_stats.bf_last_depth_try;
-		int nm1=n-1;
-		int n2=n*n;
-		int n3=n2*n;
-		int nm1_2=nm1*nm1;
-		int nm1_3=nm1_2*nm1;
-		double nom=(double)(n3-nm1_3);
-		double denom=(double)(n2-nm1_2);
-		sim_scale_clock(cycle_start_sim_utime,b_dev_a*nom/denom);
+		sim_backfill_step_scale(cycle_start_sim_utime,cycle_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
+		cycle_start_real_utime=get_real_utime();
 		cycle_start_sim_utime=get_sim_utime();
 #endif
 
@@ -1791,6 +1786,9 @@ next_task:
 				goto next_task;
 		}
 	}
+#ifdef SLURM_SIMULATOR
+	sim_backfill_scale(bf_start_sim_utime,bf_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
+#endif
 	xfree(bf_part_jobs);
 	xfree(bf_part_ptr);
 	xfree(uid);
