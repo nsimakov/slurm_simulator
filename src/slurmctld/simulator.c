@@ -78,6 +78,13 @@
 #include "src/common/sim/sim.h"
 
 
+/* reference to priority multifactor decay */
+int (*_sim_run_priority_decay)(void)=NULL;
+
+extern int sched_interval;
+static int      sim_job_sched_cnt = 0;
+static pthread_mutex_t sim_sched_cnt_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 //fill slurm_node_registration_status_msg_t from fake slurmd
 static void _sim_fill_slurm_node_registration_status_msg(slurm_node_registration_status_msg_t *msg)
 {
@@ -196,7 +203,6 @@ static int _sim_kill_not_critical_threads()
 	return error_code;
 }
 
-extern int sim_slurm_rpc_submit_batch_job(slurm_msg_t * msg);
 
 static void print_job_specs(job_desc_msg_t* dmesg)
 {
@@ -463,6 +469,7 @@ extern int sim_process_finished_jobs()
 		remove_from_in_queue_trace_record(find_job__in_queue_trace_record(event_jid));
 
 		++jobs_ended;
+		sim_job_sched_cnt++;
 
 	}
 	return jobs_ended;
@@ -507,9 +514,23 @@ extern int sim_cancel_jobs()
 			remove_from_in_queue_trace_record(trace);
 
 			++jobs_cancelled;
+			sim_job_sched_cnt++;
 		}
 	}
 	return jobs_cancelled;
+}
+
+/* reference to priority multifactor decay */
+void sim_run_priority_decay(){
+	time_t cur_time;
+	static time_t next_run_priority_decay = 0;
+
+	if(_sim_run_priority_decay!=NULL){
+		if(next_run_priority_decay<time(NULL)){
+			(*_sim_run_priority_decay)();
+			next_run_priority_decay=time(NULL)+slurmctld_conf.priority_calc_period;
+		}
+	}
 }
 /* execure scheduler from schedule_plugin */
 extern void schedule_plugin_run_once()
@@ -597,13 +618,10 @@ extern void schedule_plugin_run_once()
 	}
 
 }
-/* reference to priority multifactor decay */
-int (*sim_run_priority_decay)(void)=NULL;
 
 
-extern int sched_interval;
-static int      sim_job_sched_cnt = 0;
-static pthread_mutex_t sim_sched_cnt_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
 int sim_schedule()
 {
 	int jobs_scheduled;
@@ -825,7 +843,7 @@ void sim_sdiag_mini()
 	fclose(fout);
 }
 
-static double sim_sprio_mini_get_priority(priority_factors_object_t *prio_factors)
+static double sim_sprio_get_priority(priority_factors_object_t *prio_factors)
 {
 	int i = 0;
 	double priority = prio_factors->priority_age
@@ -905,7 +923,7 @@ void sim_sprio()
 			fprintf(fout,"%15u %8s %10.0f %10.0f %10.0f %10.0f %10.0f %10.0f %11ld %20s\n",
 					job->job_id,
 					uid_to_string_cached(job->user_id),
-					sim_sprio_mini_get_priority(job),
+					sim_sprio_get_priority(job),
 					job->priority_age,
 					job->priority_fs,
 					job->priority_js,
@@ -920,8 +938,47 @@ void sim_sprio()
 
 	fclose(fout);
 }
+void sim_submit_jobs()
+{
+	static int failed_submissions=0;
+	/* Now checking if a new job needs to be submitted */
+	while (trace_head) {
+		/*
+		 * Uhmm... This is necessary if a large number of jobs
+		 * are submitted at the same time but it seems
+		 * to have an impact on determinism
+		 */
 
-extern diag_stats_t slurmctld_diag_stats;
+		debug("time_mgr: current %lu and next trace %ld",
+				*(sim_utime), trace_head->submit);
+
+		if (*(sim_utime)/1000000 >= trace_head->submit) {
+
+			/*job_trace_t *temp_ptr;*/
+
+			debug("[%d] time_mgr--current simulated time: "
+				   "%lu\n", __LINE__, *(sim_utime)/1000000);
+
+			insert_in_queue_trace_record(trace_head);
+
+
+			if (_sim_submit_job (trace_head) < 0)
+				++failed_submissions;
+
+			trace_head = trace_head->next;
+
+			sim_job_sched_cnt++;
+			/*if (temp_ptr) xfree(temp_ptr);*/
+		} else {
+			/*
+			 * The job trace list is ordered in time so
+			 * there is nothing else to do.
+			 */
+			break;
+		}
+	}
+}
+
 
 extern void sim_controller()
 {
@@ -952,9 +1009,8 @@ extern void sim_controller()
 	int jobs_scheduled=0;
 	int jobs_scheduled_by_plugin=0;
 
-	static time_t last_priority_calc_period = 0;
 	static time_t last_db_inx_handler_call = 0;
-	uint32_t priority_calc_period = slurm_get_priority_calc_period();
+
 
 	//uint32_t schedule_last_runtime=*current_sim;
 	int run_scheduler_plugin=0;
@@ -969,10 +1025,7 @@ extern void sim_controller()
 	time_t cur_time;
 	schedule_plugin_run_once();
 	schedule_plugin_last_runtime=time(NULL);
-	if(sim_run_priority_decay!=NULL){
-		(*sim_run_priority_decay)();
-		last_priority_calc_period=time(NULL);
-	}
+
 
 	uint32_t next_sprio=0;
 
@@ -1016,113 +1069,25 @@ extern void sim_controller()
 			}
 		}
 
+		//submit jobs if needed
+		sim_submit_jobs();
 
-		/* Now checking if a new job needs to be submitted */
-		while (trace_head) {
-			/*
-			 * Uhmm... This is necessary if a large number of jobs
-			 * are submitted at the same time but it seems
-			 * to have an impact on determinism
-			 */
-
-			debug("time_mgr: current %lu and next trace %ld",
-					*(sim_utime), trace_head->submit);
-
-			if (*(sim_utime)/1000000 >= trace_head->submit) {
-
-				/*job_trace_t *temp_ptr;*/
-
-				debug("[%d] time_mgr--current simulated time: "
-					   "%lu\n", __LINE__, *(sim_utime)/1000000);
-
-				insert_in_queue_trace_record(trace_head);
-
-
-				if (_sim_submit_job (trace_head) < 0)
-					++failed_submissions;
-
-				trace_head = trace_head->next;
-
-				run_scheduler=1;
-				new_job_submitted=1;
-				/*if (temp_ptr) xfree(temp_ptr);*/
-			} else {
-				/*
-				 * The job trace list is ordered in time so
-				 * there is nothing else to do.
-				 */
-				break;
-			}
-		}
 
 		//check if jobs done
-		if(sim_process_finished_jobs()>0){
-			run_scheduler=1;
-			job_finished=1;
-		}
-		sim_cancel_jobs();
-		run_scheduler=1;
+		sim_process_finished_jobs();
 
-		//
-		if(sim_run_priority_decay!=NULL){
-			cur_time=time(NULL);
-			if(last_priority_calc_period+priority_calc_period<cur_time){
-				(*sim_run_priority_decay)();
-				last_priority_calc_period=time(NULL);
-			}
-		}
+		//check if jobs need tp be cancelled
+		sim_cancel_jobs();
+
+		//run priority decay plugin
+		sim_run_priority_decay();
 
 		//run scheduler
-		//time_t scheduler_time=time(NULL);
-		//if(run_scheduler||schedule_last_runtime+60<time(NULL)){
-			//also need to make it run every x seconds
-			if(run_scheduler){
-				sim_job_sched_cnt++;
-				run_scheduler=0;
-			}
-			jobs_scheduled=sim_schedule();
+		jobs_scheduled=sim_schedule();
 
-			//scheduler_ran=1;
-			//schedule_last_runtime=time(NULL);
-
-			//i.e. if was not able to schedule anything, need to wait for some
-			//resource to get free
-			//if(jobs_scheduled==0)
-			//	run_scheduler=0;
-		//}
 
 		//try to run backfill
 		schedule_plugin_run_once();
-		/*cur_time=time(NULL);
-		if(new_job_submitted+job_finished){
-			schedule_plugin_next_sleeptype=0;//i.e. short
-		}
-		if(schedule_plugin_sleeptype==2 && schedule_plugin_next_sleeptype==0){
-			//if very long sleep and something happence downgrade it to long sleep
-			schedule_plugin_sleeptype=1;
-		}
-		if(schedule_plugin_last_runtime+schedule_plugin_sleep[schedule_plugin_sleeptype]<=cur_time){
-			run_scheduler_plugin=1;
-		}
-
-		if(run_scheduler_plugin)
-		{
-			schedule_plugin_run_once();
-
-			schedule_plugin_last_runtime=time(NULL);
-			schedule_plugin_last_depth_try=slurmctld_diag_stats.bf_last_depth_try;
-
-			if(slurm_sim_conf->sdiag_mini_file_out!=NULL){
-				sim_sdiag_mini();
-			}
-
-			schedule_plugin_sleeptype=schedule_plugin_next_sleeptype;
-			schedule_plugin_next_sleeptype=1;
-			run_scheduler_plugin=0;
-
-			//if(schedule_plugin_last_depth_try==0 && schedule_plugin_sleeptype==1)
-			//	schedule_plugin_sleeptype=2;
-		}*/
 
 		//last_db_inx_handler_call
 		if(sim_db_inx_handler_call_once!=NULL && last_db_inx_handler_call-time(NULL)>5){
@@ -1137,8 +1102,6 @@ extern void sim_controller()
 			sim_sprio();
 		}
 
-
-		//int sched_dur=time(NULL)-scheduler_time
 		//update time
 		if(new_job_submitted+job_finished+run_scheduler==0){
 			sim_pause_clock();
@@ -1148,6 +1111,34 @@ extern void sim_controller()
 
 	}
 }
+
+
+void sim_mini_loop(){
+	return;
+	uint64_t cur_time= get_sim_utime();
+	static uint64_t next_run_mini_loop = 0;
+
+	if(next_run_mini_loop<cur_time){
+
+		//submit jobs if needed
+		sim_submit_jobs();
+
+		//check if jobs done
+		sim_process_finished_jobs();
+
+		//check if jobs need tp be cancelled
+		sim_cancel_jobs();
+
+		//run priority decay plugin
+		sim_run_priority_decay();
+
+		//run scheduler
+		sim_schedule();
+
+		next_run_mini_loop=get_sim_utime()+500000;
+	}
+}
+
 int usleep (__useconds_t __useconds)
 {
 	return __useconds;

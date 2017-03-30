@@ -1674,7 +1674,7 @@ static void _set_usage_efctv(slurmdb_assoc_rec_t *assoc)
 }
 
 #ifdef SLURM_SIMULATOR
-extern int (*sim_run_priority_decay)(void);
+extern int (*_sim_run_priority_decay)(void);
 
 int run_priority_decay()
 {
@@ -1723,7 +1723,7 @@ int init ( void )
 #ifdef SLURM_SIMULATOR
 		//in simulator _decay_thread called from simulator loop
 		//so no extra threads
-		sim_run_priority_decay=run_priority_decay;
+		_sim_run_priority_decay=run_priority_decay;
 		xfree(temp);
 		debug("%s loaded", plugin_name);
 		return SLURM_SUCCESS;

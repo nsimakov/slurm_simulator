@@ -1494,6 +1494,7 @@ next_task:
 
 #ifdef SLURM_SIMULATOR
 		sim_backfill_step_scale(cycle_start_sim_utime,cycle_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
+		sim_mini_loop();
 		cycle_start_real_utime=get_real_utime();
 		cycle_start_sim_utime=get_sim_utime();
 #endif
