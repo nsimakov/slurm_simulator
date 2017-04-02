@@ -2079,10 +2079,11 @@ static bool _test_resv_overlap(node_space_map_t *node_space,
  * return 1 if backfill was executed 0 if not*/
 extern int sim_backfill_agent(void)
 {
-	time_t now=time(NULL);
+	uint64_t now=get_sim_utime();
 	double wait_time;
 	static time_t last_backfill_time = 0;
-	static time_t next_backfill_time = 0;
+	static uint64_t last_backfill_utime = 0;
+	static uint64_t next_backfill_utime = 0;
 	static bool load_config = true;
 	static bool short_sleep = false;
 
@@ -2096,13 +2097,16 @@ extern int sim_backfill_agent(void)
 		config_flag = false;
 		load_config = false;
 	}
+	if(next_backfill_utime==0){
+		next_backfill_utime=now+backfill_interval*1000000;
+	}
 
-	if(next_backfill_time<now){
+	if(next_backfill_utime<now){
 		//agent kinda awaken from sleep
 		run_backfill=1;
 
 		//if nothing interesting happence lets sleep more
-		wait_time = difftime(now, last_backfill_time);
+		wait_time = time(NULL)-last_backfill_time;
 		if ((wait_time < backfill_interval) || !_more_work(last_backfill_time)) {
 			short_sleep = true;
 			run_backfill=0;
@@ -2112,6 +2116,7 @@ extern int sim_backfill_agent(void)
 		if(run_backfill == 1){
 			lock_slurmctld(all_locks);
 			(void) _attempt_backfill();
+			last_backfill_utime = get_sim_utime();
 			last_backfill_time = time(NULL);
 			(void) bb_g_job_try_stage_in();
 			unlock_slurmctld(all_locks);
@@ -2119,11 +2124,11 @@ extern int sim_backfill_agent(void)
 		}
 
 		//next time to attempt backfill
-		now=time(NULL);
+		now=get_sim_utime();
 		if(short_sleep == true){
-			next_backfill_time=now+1;
+			next_backfill_utime=now+1000000;
 		}else{
-			next_backfill_time=now+backfill_interval;
+			next_backfill_utime=now+backfill_interval*1000000;
 		}
 	}
 	return run_backfill;

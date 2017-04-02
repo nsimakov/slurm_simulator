@@ -638,10 +638,10 @@ int sim_schedule()
 	now = time(NULL);
 
 	if (last_sched_time == 0){
-		last_sched_time = now;
-		last_full_sched_time = now;
+		//last_sched_time = now;
+		//last_full_sched_time = now;
 		//last_checkpoint_time = now;
-		last_purge_job_time = now;
+		//last_purge_job_time = now;
 	}
 
 	/* Locks: Read config, write job, write node, read partition */
@@ -949,9 +949,6 @@ void sim_submit_jobs()
 		 * to have an impact on determinism
 		 */
 
-		debug("time_mgr: current %lu and next trace %ld",
-				*(sim_utime), trace_head->submit);
-
 		if (*(sim_utime)/1000000 >= trace_head->submit) {
 
 			/*job_trace_t *temp_ptr;*/
@@ -992,6 +989,7 @@ extern void sim_controller()
 	if(trace_head!=NULL){
 		*sim_utime = (trace_head->submit-slurm_sim_conf->start_seconds_before_first_job)*1000000;
 	}
+	uint64_t init_utime=*sim_utime;
 
 	//kill threads which are not impotent for simulation
 	_sim_kill_not_critical_threads();
@@ -1031,6 +1029,9 @@ extern void sim_controller()
 
 	while(1)
 	{
+		debug("time_mgr: current %lu and sinse start %.3f",
+				*(sim_utime), (*(sim_utime)-init_utime)*0.000001);
+
 		int new_job_submitted=0;
 		int job_finished=0;
 		//int scheduler_ran=0;

@@ -686,6 +686,8 @@ void __attribute__ ((constructor)) sim_init(void)
 
 	sim_read_sim_conf();
 
+	(*sim_utime)=slurm_sim_conf->time_start;
+
 	debug("sim_init: done");
 }
 
