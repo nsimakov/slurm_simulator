@@ -35,7 +35,6 @@ extern int sim_read_sim_conf(void)
 		{"TimeStep", S_P_UINT32},
 		{"AfterJobLaunchTimeIncreament", S_P_UINT32},
 		{"BFBetweenJobsChecksTimeIncreament", S_P_UINT32},
-		{"RPCThread", S_P_UINT32},
 		{"JobsTraceFile", S_P_STRING},
 
 		{"sdiagPeriod", S_P_UINT32},
@@ -63,10 +62,9 @@ extern int sim_read_sim_conf(void)
 	slurm_sim_conf->time_start=978325200;
 	slurm_sim_conf->start_seconds_before_first_job=30;
 	slurm_sim_conf->time_stop=1;
-	slurm_sim_conf->time_step=1;
+	slurm_sim_conf->time_step=1000000;
 	slurm_sim_conf->after_job_launch_time_increament=0;
 	slurm_sim_conf->bf_between_jobs_check_time_increament=0;
-	slurm_sim_conf->rpc_thread=0;
 
 	slurm_sim_conf->sdiag_period=0;
 	slurm_sim_conf->sdiag_file_out=NULL;
@@ -110,7 +108,6 @@ extern int sim_read_sim_conf(void)
 		s_p_get_uint32(&slurm_sim_conf->time_step, "TimeStep", tbl);
 		s_p_get_uint32(&slurm_sim_conf->after_job_launch_time_increament, "AfterJobLaunchTimeIncreament", tbl);
 		s_p_get_uint32(&slurm_sim_conf->bf_between_jobs_check_time_increament, "BFBetweenJobsChecksTimeIncreament", tbl);
-		s_p_get_uint32(&slurm_sim_conf->rpc_thread, "RPCThread", tbl);
 
 		s_p_get_uint32(&slurm_sim_conf->sdiag_period, "sdiagPeriod", tbl);
 		s_p_get_string(&slurm_sim_conf->sdiag_file_out, "sdiagFileOut", tbl);

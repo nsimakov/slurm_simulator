@@ -19,7 +19,6 @@ typedef struct slurm_sim_conf {
 	uint32_t	time_step;	/* time step for simulation in microseconds */
 	uint32_t	after_job_launch_time_increament;
 	uint32_t	bf_between_jobs_check_time_increament;
-	uint32_t	rpc_thread;
 	char *		jobs_trace_file; /* location of file with job traces */
 	uint32_t    sdiag_period;
 	char *		sdiag_file_out; /* location of file for sdiag output */

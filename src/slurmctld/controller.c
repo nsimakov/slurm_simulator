@@ -567,9 +567,7 @@ int main(int argc, char *argv[])
 		/*
 		 * create attached thread to process RPCs
 		 */
-#ifdef SLURM_SIMULATOR
-		if(slurm_sim_conf->rpc_thread){
-#endif
+#ifndef SLURM_SIMULATOR
 		server_thread_incr();
 		slurm_attr_init(&thread_attr);
 		while (pthread_create(&slurmctld_config.thread_id_rpc,
@@ -579,8 +577,6 @@ int main(int argc, char *argv[])
 			sleep(1);
 		}
 		slurm_attr_destroy(&thread_attr);
-#ifdef SLURM_SIMULATOR
-		}
 #endif
 		/*
 		 * create attached thread for signal handling
