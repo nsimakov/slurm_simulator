@@ -938,6 +938,132 @@ void sim_sprio()
 
 	fclose(fout);
 }
+/*printout like from sinfo*/
+void sim_sinfo()
+{
+	if(slurm_sim_conf->sinfo_file_out==NULL)
+		return;
+	FILE *fout=fopen(slurm_sim_conf->sinfo_file_out,"at");
+	if(fout==NULL)
+		return;
+
+	time_t now = time(NULL);
+	struct node_record *node_ptr;
+
+	fprintf(fout, "###############################################################################\n");
+	fprintf(fout, "t: %s", ctime(&now));
+	fprintf(fout, "PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST\n");
+
+	ListIterator part_iterator = list_iterator_create(part_list);
+	struct part_record *part_ptr;
+	while ((part_ptr = (struct part_record *) list_next(part_iterator))) {
+		//printf("Partition: %s\n",part_ptr->name);
+
+		hostlist_t hl=bitmap2hostlist(part_ptr->node_bitmap);
+
+		//
+
+		hostlist_t nodes_unk=hostlist_create(NULL);
+		hostlist_t nodes_down=hostlist_create(NULL);
+		hostlist_t nodes_idle=hostlist_create(NULL);
+		hostlist_t nodes_alloc=hostlist_create(NULL);
+		hostlist_t nodes_err=hostlist_create(NULL);
+		hostlist_t nodes_mix=hostlist_create(NULL);
+		hostlist_t nodes_fut=hostlist_create(NULL);
+
+		//
+		hostlist_iterator_t itr = NULL;
+		char *host = NULL;
+		itr = hostlist_iterator_create(hl);
+		while((host = hostlist_next(itr))) {
+			//printf("node %s\n",host);
+			struct node_record *node_ptr=find_node_record(host);
+			if(node_ptr==NULL)continue;
+
+			if(IS_NODE_UNKNOWN(node_ptr))
+				hostlist_push_host(nodes_unk,node_ptr->name);
+			if(IS_NODE_DOWN(node_ptr))
+				hostlist_push_host(nodes_down,node_ptr->name);
+			if(IS_NODE_IDLE(node_ptr))
+				hostlist_push_host(nodes_idle,node_ptr->name);
+			if(IS_NODE_ALLOCATED(node_ptr))
+				hostlist_push_host(nodes_alloc,node_ptr->name);
+			if(IS_NODE_ERROR(node_ptr))
+				hostlist_push_host(nodes_err,node_ptr->name);
+			if(IS_NODE_MIXED(node_ptr))
+				hostlist_push_host(nodes_mix,node_ptr->name);
+			if(IS_NODE_FUTURE(node_ptr))
+				hostlist_push_host(nodes_fut,node_ptr->name);
+		}
+		if(hostlist_count(nodes_unk)>0)
+			fprintf(fout,"%9s NotIm NotImpleme %6d    unk %s\n",part_ptr->name,
+				hostlist_count(nodes_unk),
+				hostlist_ranged_string_xmalloc(nodes_unk));
+		if(hostlist_count(nodes_down)>0)
+			fprintf(fout,"%9s NotIm NotImpleme %6d   down %s\n",part_ptr->name,
+				hostlist_count(nodes_down),
+				hostlist_ranged_string_xmalloc(nodes_down));
+		if(hostlist_count(nodes_idle)>0)
+			fprintf(fout,"%9s NotIm NotImpleme %6d   idle %s\n",part_ptr->name,
+				hostlist_count(nodes_idle),
+				hostlist_ranged_string_xmalloc(nodes_idle));
+		if(hostlist_count(nodes_alloc)>0)
+			fprintf(fout,"%9s NotIm NotImpleme %6d  alloc %s\n",part_ptr->name,
+				hostlist_count(nodes_alloc),
+				hostlist_ranged_string_xmalloc(nodes_alloc));
+		if(hostlist_count(nodes_err)>0)
+			fprintf(fout,"%9s NotIm NotImpleme %6d    err %s\n",part_ptr->name,
+				hostlist_count(nodes_err),
+				hostlist_ranged_string_xmalloc(nodes_err));
+		if(hostlist_count(nodes_mix)>0)
+			fprintf(fout,"%9s NotIm NotImpleme %6d    mix %s\n",part_ptr->name,
+				hostlist_count(nodes_mix),
+				hostlist_ranged_string_xmalloc(nodes_mix));
+		if(hostlist_count(nodes_fut)>0)
+			fprintf(fout,"%9s NotIm NotImpleme %6d future %s\n",part_ptr->name,
+				hostlist_count(nodes_fut),
+				hostlist_ranged_string_xmalloc(nodes_fut));
+
+
+		hostlist_destroy(nodes_fut);
+		hostlist_destroy(nodes_mix);
+		hostlist_destroy(nodes_err);
+		hostlist_destroy(nodes_alloc);
+		hostlist_destroy(nodes_idle);
+		hostlist_destroy(nodes_down);
+		hostlist_destroy(nodes_unk);
+
+
+		hostlist_destroy(hl);
+		//hl = hostlist_create(part_ptr->nodes);
+		//pos = hostlist_find(hl, node_msg->node_array[0].name);
+		//hostlist_destroy(hl);
+	}
+	/*int inx;
+	struct node_record *node_ptr = node_record_table_ptr;
+	for (inx = 0; inx < node_record_count; inx++, node_ptr++) {
+
+	}
+	hostlist_t*/
+	fclose(fout);
+}
+/*printout like from squeue*/
+void sim_squeue()
+{
+	if(slurm_sim_conf->squeue_file_out==NULL)
+		return;
+	FILE *fout=fopen(slurm_sim_conf->squeue_file_out,"at");
+	if(fout==NULL)
+		return;
+
+	time_t now = time(NULL);
+
+	fprintf(fout, "###############################################################################\n");
+	fprintf(fout, "t: %s", ctime(&now));
+	fprintf(fout, "             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)\n");
+
+	fclose(fout);
+}
 void sim_submit_jobs()
 {
 	static int failed_submissions=0;
@@ -1028,14 +1154,17 @@ extern void sim_controller()
 
 
 	uint32_t next_sprio=0;
+	uint32_t next_sinfo=0;
+	uint32_t next_squeue=0;
+
     char ctime_buff[128];
 	while(1)
 	{
 		cur_time=time(NULL);
 
 		//strftime (ctime_buff, 100, "%Y-%m-%d %H:%M:%S.000", localtime (&cur_time));
-		debug("time_mgr: current %s %lu and sinse start %.3f",//ctime_buff,
-				*(sim_utime), (*(sim_utime)-init_utime)*0.000001);
+		//debug("time_mgr: current %lu and sinse start %.3f",
+		//		*(sim_utime), (*(sim_utime)-init_utime)*0.000001);
 
 		int new_job_submitted=0;
 		int job_finished=0;
@@ -1106,6 +1235,16 @@ extern void sim_controller()
 		if(slurm_sim_conf->sprio_period!=0 && slurm_sim_conf->sprio_file_out!=NULL && cur_time>next_sprio){
 			next_sprio=(cur_time/slurm_sim_conf->sprio_period+1)*slurm_sim_conf->sprio_period;
 			sim_sprio();
+		}
+		cur_time=time(NULL);
+		if(slurm_sim_conf->sinfo_period!=0 && slurm_sim_conf->sinfo_file_out!=NULL && cur_time>next_sinfo){
+			next_sinfo=(cur_time/slurm_sim_conf->sinfo_period+1)*slurm_sim_conf->sinfo_period;
+			sim_sinfo();
+		}
+		cur_time=time(NULL);
+		if(slurm_sim_conf->squeue_period!=0 && slurm_sim_conf->squeue_file_out!=NULL && cur_time>next_squeue){
+			next_squeue=(cur_time/slurm_sim_conf->squeue_period+1)*slurm_sim_conf->squeue_period;
+			sim_squeue();
 		}
 
 		//update time
