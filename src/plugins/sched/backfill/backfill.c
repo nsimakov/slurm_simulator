@@ -809,6 +809,10 @@ static int _yield_locks(int usec)
 	part_update = last_part_update;
 
 	unlock_slurmctld(all_locks);
+#ifdef SLURM_SIMULATOR
+	//in simulator execute mini loop
+	sim_mini_loop();
+#endif
 	while (!stop_backfill) {
 		bf_sleep_usec += _my_sleep(usec);
 		if ((defer_rpc_cnt == 0) ||
@@ -1494,7 +1498,6 @@ next_task:
 
 #ifdef SLURM_SIMULATOR
 		sim_backfill_step_scale(cycle_start_sim_utime,cycle_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
-		sim_mini_loop();
 		cycle_start_real_utime=get_real_utime();
 		cycle_start_sim_utime=get_sim_utime();
 #endif

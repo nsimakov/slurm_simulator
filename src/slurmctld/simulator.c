@@ -1115,7 +1115,6 @@ extern void sim_controller()
 
 
 void sim_mini_loop(){
-	return;
 	uint64_t cur_time= get_sim_utime();
 	static uint64_t next_run_mini_loop = 0;
 
