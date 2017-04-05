@@ -1,6 +1,7 @@
 
 #ifdef SLURM_SIMULATOR
 
+#include <math.h>
 #include <stdio.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -20,8 +21,8 @@ extern errno;
 /* Function Pointers */
 int (*real_gettimeofday)(struct timeval *,struct timezone *) = NULL;
 time_t (*real_time)(time_t *)                                = NULL;
-
-
+unsigned int (*real_sleep)(unsigned int seconds)              = NULL;
+int (*real_usleep)(useconds_t usec)                           = NULL;
 
 /* Shared Memory */
 void         * timemgr_data = NULL;
@@ -56,9 +57,11 @@ int (*sim_db_inx_handler_call_once)()=NULL;
 
 int sim_ctrl=0;
 
+/* name of shared memory segment */
+char * sim_shared_memory_name=NULL;
+
 /* Function Prototypes */
 static void init_funcs();
-void init_shared_memory_if_needed();
 int getting_simulation_users();
 
 static int clock_ticking=0;
@@ -67,18 +70,6 @@ static uint64_t prev_sim_utime=0;
 
 time_t time(time_t *t)
 {
-	init_shared_memory_if_needed();
-	/* If the current_sim pointer is NULL that means that there is no
-	 * shared memory segment, at least not yet, therefore use real function
-	 * for now.
-	 * Note, here we are examing the location of to where the pointer points
-	 *       and not the value itself.
-	 */
-	if (!(sim_utime) && !real_time) init_funcs();
-	if (!(sim_utime)) {
-		return real_time(t);
-	}
-
 	if(clock_ticking){
 		//i.e. clock ticking but time is shifted
 		struct timeval cur_real_time;
@@ -89,7 +80,6 @@ time_t time(time_t *t)
 		*sim_utime=cur_real_utime-ref_utime+prev_sim_utime;
 
 	}
-
 	return *(sim_utime)/1000000;
 }
 double get_realtime()
@@ -113,16 +103,6 @@ uint64_t get_real_utime()
 }
 int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
-	init_shared_memory_if_needed();
-	if (!(sim_utime)) {
-		if (attaching_shared_memory() < 0) {
-			error("SIM: Error attaching/building shared memory "
-			      "and mmaping it");
-		};
-		if (!real_gettimeofday) init_funcs();
-		return real_gettimeofday(tv, tz);
-	}
-
 	if(clock_ticking){
 		//i.e. clock ticking but time is shifted
 		struct timeval cur_real_time;
@@ -258,23 +238,40 @@ extern void sim_set_time(time_t unix_time)
 
 	prev_sim_utime=*sim_utime;
 }
-extern unsigned int sim_sleep (unsigned int __seconds)
+/*extern unsigned int sim_sleep (unsigned int __seconds)
 {
 	time_t sleep_till=time(NULL)+__seconds;
 	while(sleep_till<time(NULL)){
 		usleep(100);
 	}
+}*/
+
+/* get and build shared memory name if needed */
+char * get_shared_memory_name()
+{
+	if(sim_shared_memory_name==NULL){
+		sim_shared_memory_name=(char*)xmalloc(256*sizeof(char));
+		if(slurm_sim_conf==NULL)
+			sim_shared_memory_name=xstrdup("/slurm_sim.shm");
+		else if(slurm_sim_conf->shared_memory_name==NULL)
+			sim_shared_memory_name=xstrdup("/slurm_sim.shm");
+		else
+			sim_shared_memory_name=xstrdup(slurm_sim_conf->shared_memory_name);
+
+	}
+
+	return sim_shared_memory_name;
 }
 
 static int build_shared_memory()
 {
 	int fd;
 
-	fd = shm_open(SLURM_SIM_SHM, O_CREAT | O_RDWR,
+	fd = shm_open(get_shared_memory_name(), O_CREAT | O_RDWR,
 				S_IRWXU | S_IRWXG | S_IRWXO);
 	if (fd < 0) {
 		int err = errno;
-		error("SIM: Error opening %s -- %s", SLURM_SIM_SHM,strerror(err));
+		error("SIM: Error opening %s -- %s", get_shared_memory_name(),strerror(err));
 		return -1;
 	}
 
@@ -286,7 +283,7 @@ static int build_shared_memory()
 							MAP_SHARED, fd, 0);
 
 	if(!timemgr_data){
-		debug("SIM: mmaping %s file can not be done\n", SLURM_SIM_SHM);
+		debug("SIM: mmaping %s file can not be done\n", get_shared_memory_name());
 		return -1;
 	}
 
@@ -299,14 +296,15 @@ static int build_shared_memory()
 
 
 /*
- * Slurmctld and slurmd do not really build shared memory but they use that
- * one built by sim_mgr
+ * slurmd build shared memory (because it run first) and
+ * Slurmctld attached to it
  */
 extern int attaching_shared_memory()
 {
 	int fd;
+	int new_shared_memory=0;
 
-	fd = shm_open(SLURM_SIM_SHM, O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO );
+	fd = shm_open(get_shared_memory_name(), O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO );
 	if (fd >= 0) {
 		if (ftruncate(fd, SIM_SHM_SEGMENT_SIZE)) {
 			info("SIM: Warning! Can't truncate shared memory segment.");
@@ -315,10 +313,11 @@ extern int attaching_shared_memory()
 				    PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	} else {
 		build_shared_memory();
+		new_shared_memory=1;
 	}
 
 	if (!timemgr_data) {
-		error("SIM: mmaping %s file can not be done", SLURM_SIM_SHM);
+		error("SIM: mmaping %s file can not be done", get_shared_memory_name());
 		return -1;
 	}
 
@@ -333,7 +332,7 @@ extern int attaching_shared_memory()
 	next_slurmd_event = timemgr_data + SIM_NEXT_SLURMD_EVENT_OFFSET;
 	sim_jobs_done     = timemgr_data + SIM_JOBS_DONE;
 
-	return 0;
+	return new_shared_memory;
 }
 
 static void
@@ -391,16 +390,37 @@ static void init_funcs()
 			return;
 		}
 	}
-}
+	if (real_sleep == NULL) {
+		debug("SIM: Looking for real sleep function");
 
-void init_shared_memory_if_needed()
-{
-	if (!(sim_utime)) {
-		if (attaching_shared_memory() < 0) {
-			error("SIM: Error attaching/building shared memory "
-			      "and mmaping it");
-		};
+		handle = dlopen(lib_loc, RTLD_LOCAL | RTLD_LAZY);
+		if (handle == NULL) {
+			error("SIM: Error in dlopen: %s", dlerror());
+			return;
+		}
+		real_sleep = dlsym( handle, "sleep");
+		if (real_sleep == NULL) {
+			error("SIM: Error: no sleep function found");
+			return;
+		}
 	}
+	if (real_usleep == NULL) {
+		debug("SIM: Looking for real sleep function");
+
+		handle = dlopen(lib_loc, RTLD_LOCAL | RTLD_LAZY);
+		if (handle == NULL) {
+			error("SIM: Error in dlopen: %s", dlerror());
+			return;
+		}
+		real_usleep = dlsym( handle, "usleep");
+		if (real_usleep == NULL) {
+			error("SIM: Error: no sleep function found");
+			return;
+		}
+	}
+
+	//unsigned int (*real_sleep(unsigned int seconds);             = NULL;
+	//int (*real_usleep(useconds_t usec)                           = NULL;
 }
 
 /* User- and uid-related functions */
@@ -635,6 +655,8 @@ void __attribute__ ((constructor)) sim_init(void)
 #endif
 	determine_libc();
 
+	sim_read_sim_conf();
+
 	if (attaching_shared_memory() < 0) {
 		error("Error attaching/building shared memory and mmaping it");
 	};
@@ -684,9 +706,10 @@ void __attribute__ ((constructor)) sim_init(void)
 		}
 	}
 
-	sim_read_sim_conf();
 
-	(*sim_utime)=slurm_sim_conf->time_start;
+	sim_pause_clock();
+	sim_set_new_time(slurm_sim_conf->time_start*(uint64_t)1000000);
+	sim_resume_clock();
 
 	debug("sim_init: done");
 }

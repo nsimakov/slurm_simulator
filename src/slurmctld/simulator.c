@@ -982,13 +982,15 @@ extern void sim_controller()
 	//read conf
 
 	//set time
-	*sim_utime = slurm_sim_conf->time_start*1000000;
+	sim_pause_clock();
+	sim_set_new_time(slurm_sim_conf->time_start*(uint64_t)1000000);
 
 	//read job traces
 	sim_read_job_trace(slurm_sim_conf->jobs_trace_file);
 	if(trace_head!=NULL){
-		*sim_utime = (trace_head->submit-slurm_sim_conf->start_seconds_before_first_job)*1000000;
+		sim_set_new_time((trace_head->submit-slurm_sim_conf->start_seconds_before_first_job)*(uint64_t)1000000);
 	}
+	sim_resume_clock();
 	uint64_t init_utime=*sim_utime;
 
 	//kill threads which are not impotent for simulation
@@ -1026,10 +1028,13 @@ extern void sim_controller()
 
 
 	uint32_t next_sprio=0;
-
+    char ctime_buff[128];
 	while(1)
 	{
-		debug("time_mgr: current %lu and sinse start %.3f",
+		cur_time=time(NULL);
+
+		//strftime (ctime_buff, 100, "%Y-%m-%d %H:%M:%S.000", localtime (&cur_time));
+		debug("time_mgr: current %s %lu and sinse start %.3f",//ctime_buff,
 				*(sim_utime), (*(sim_utime)-init_utime)*0.000001);
 
 		int new_job_submitted=0;

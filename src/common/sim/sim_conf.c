@@ -50,6 +50,7 @@ extern int sim_read_sim_conf(void)
 		{"bf_model_real_power", S_P_DOUBLE},
 		{"bf_model_sim_prefactor", S_P_DOUBLE},
 		{"bf_model_sim_power", S_P_DOUBLE},
+		{"SharedMemoryName", S_P_STRING},
 		{NULL} };
 	s_p_hashtbl_t *tbl = NULL;
 	char *conf_path = NULL;
@@ -79,6 +80,8 @@ extern int sim_read_sim_conf(void)
 	slurm_sim_conf->bf_model_real_power=1.0;
 	slurm_sim_conf->bf_model_sim_prefactor=1.0;
 	slurm_sim_conf->bf_model_sim_power=1.0;
+
+	slurm_sim_conf->shared_memory_name=NULL;
 
 	/* Get the slurmdbd.conf path and validate the file */
 	conf_path = get_extra_conf_path("sim.conf");
@@ -122,6 +125,8 @@ extern int sim_read_sim_conf(void)
 		s_p_get_double(&slurm_sim_conf->bf_model_real_power, "bf_model_real_power", tbl);
 		s_p_get_double(&slurm_sim_conf->bf_model_sim_prefactor, "bf_model_sim_prefactor", tbl);
 		s_p_get_double(&slurm_sim_conf->bf_model_sim_power, "bf_model_sim_power", tbl);
+
+		s_p_get_string(&slurm_sim_conf->shared_memory_name, "SharedMemoryName", tbl);
 
 		s_p_hashtbl_destroy(tbl);
 	}
