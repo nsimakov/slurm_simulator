@@ -938,6 +938,64 @@ void sim_sprio()
 
 	fclose(fout);
 }
+
+static int _sim_print_str(char *str, int width, bool right, bool cut_output)
+{
+	char format[64];
+	char temp[64];
+	int printed = 0;
+
+	if (right == true && width != 0)
+		snprintf(format, 64, "%%%ds", width);
+	else if (width != 0)
+		snprintf(format, 64, "%%.%ds", width);
+	else {
+		format[0] = '%';
+		format[1] = 's';
+		format[2] = '\0';
+	}
+
+	if ((width == 0) || (cut_output == false)) {
+		snprintf(temp,64,format, str);
+		snprintf(str,64,"%s",temp);
+	} else {
+		char temp[width + 1];
+		snprintf(temp, width + 1, format, str);
+		snprintf(str,64,"%s",temp);
+	}
+
+	while (printed++ < width)
+		printf(" ");
+
+	return printed;
+}
+int _sim_print_secs(char *str, long time, int width, bool right, bool cut_output)
+{
+	long days, hours, minutes, seconds;
+
+	seconds =  time % 60;
+	minutes = (time / 60)   % 60;
+	hours   = (time / 3600) % 24;
+	days    =  time / 86400;
+
+	if ((time < 0) || (time > (365 * 24 * 3600)))
+		snprintf(str, 64, "INVALID");
+	else if (days)
+		snprintf(str, 64,
+			 "%ld-%2.2ld:%2.2ld:%2.2ld",
+			 days, hours, minutes, seconds);
+	else if (hours)
+		snprintf(str, 64,
+			 "%ld:%2.2ld:%2.2ld",
+			 hours, minutes, seconds);
+	else
+		snprintf(str, 64,
+			 "%ld:%2.2ld",
+			 minutes, seconds);
+
+	_sim_print_str(str, width, right, cut_output);
+	return SLURM_SUCCESS;
+}
 /*printout like from sinfo*/
 void sim_sinfo()
 {
@@ -961,7 +1019,25 @@ void sim_sinfo()
 
 		hostlist_t hl=bitmap2hostlist(part_ptr->node_bitmap);
 
-		//
+		char part_avail[64];
+		if (part_ptr->state_up == PARTITION_UP)
+			snprintf(part_avail, 64, "up");
+		else if (part_ptr->state_up == PARTITION_DOWN)
+			snprintf(part_avail, 64, "down");
+		else if (part_ptr->state_up == PARTITION_DRAIN)
+			snprintf(part_avail, 64, "drain");
+		else if (part_ptr->state_up == PARTITION_INACTIVE)
+			snprintf(part_avail, 64, "inactive");
+		else
+			snprintf(part_avail, 64, "unknown");
+
+		char timelimit[64];
+		if(part_ptr->max_time == INFINITE)
+			snprintf(timelimit, 64, "infinite");
+		else
+			_sim_print_secs(timelimit,(part_ptr->max_time * 60L),
+						10, 1, 1);
+
 
 		hostlist_t nodes_unk=hostlist_create(NULL);
 		hostlist_t nodes_down=hostlist_create(NULL);
@@ -996,31 +1072,31 @@ void sim_sinfo()
 				hostlist_push_host(nodes_fut,node_ptr->name);
 		}
 		if(hostlist_count(nodes_unk)>0)
-			fprintf(fout,"%9s NotIm NotImpleme %6d    unk %s\n",part_ptr->name,
+			fprintf(fout,"%9s %5s %10s %6d    unk %s\n",part_ptr->name,part_avail,timelimit,
 				hostlist_count(nodes_unk),
 				hostlist_ranged_string_xmalloc(nodes_unk));
 		if(hostlist_count(nodes_down)>0)
-			fprintf(fout,"%9s NotIm NotImpleme %6d   down %s\n",part_ptr->name,
+			fprintf(fout,"%9s %5s %10s %6d   down %s\n",part_ptr->name,part_avail,timelimit,
 				hostlist_count(nodes_down),
 				hostlist_ranged_string_xmalloc(nodes_down));
 		if(hostlist_count(nodes_idle)>0)
-			fprintf(fout,"%9s NotIm NotImpleme %6d   idle %s\n",part_ptr->name,
+			fprintf(fout,"%9s %5s %10s %6d   idle %s\n",part_ptr->name,part_avail,timelimit,
 				hostlist_count(nodes_idle),
 				hostlist_ranged_string_xmalloc(nodes_idle));
 		if(hostlist_count(nodes_alloc)>0)
-			fprintf(fout,"%9s NotIm NotImpleme %6d  alloc %s\n",part_ptr->name,
+			fprintf(fout,"%9s %5s %10s %6d  alloc %s\n",part_ptr->name,part_avail,timelimit,
 				hostlist_count(nodes_alloc),
 				hostlist_ranged_string_xmalloc(nodes_alloc));
 		if(hostlist_count(nodes_err)>0)
-			fprintf(fout,"%9s NotIm NotImpleme %6d    err %s\n",part_ptr->name,
+			fprintf(fout,"%9s %5s %10s %6d    err %s\n",part_ptr->name,part_avail,timelimit,
 				hostlist_count(nodes_err),
 				hostlist_ranged_string_xmalloc(nodes_err));
 		if(hostlist_count(nodes_mix)>0)
-			fprintf(fout,"%9s NotIm NotImpleme %6d    mix %s\n",part_ptr->name,
+			fprintf(fout,"%9s %5s %10s %6d    mix %s\n",part_ptr->name,part_avail,timelimit,
 				hostlist_count(nodes_mix),
 				hostlist_ranged_string_xmalloc(nodes_mix));
 		if(hostlist_count(nodes_fut)>0)
-			fprintf(fout,"%9s NotIm NotImpleme %6d future %s\n",part_ptr->name,
+			fprintf(fout,"%9s %5s %10s %6d future %s\n",part_ptr->name,part_avail,timelimit,
 				hostlist_count(nodes_fut),
 				hostlist_ranged_string_xmalloc(nodes_fut));
 
@@ -1047,6 +1123,8 @@ void sim_sinfo()
 	hostlist_t*/
 	fclose(fout);
 }
+
+
 /*printout like from squeue*/
 void sim_squeue()
 {
@@ -1061,6 +1139,49 @@ void sim_squeue()
 	fprintf(fout, "###############################################################################\n");
 	fprintf(fout, "t: %s", ctime(&now));
 	fprintf(fout, "             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)\n");
+	struct job_record *job;
+
+	ListIterator job_iterator;
+	job_iterator = list_iterator_create(job_list);
+	while ((job = (struct job_record *) list_next(job_iterator))) {
+		if (!IS_JOB_COMPLETING(job)
+				   && (IS_JOB_PENDING(job)
+				       || IS_JOB_TIMEOUT(job)
+				       || IS_JOB_DEADLINE(job)
+				       || IS_JOB_FAILED(job))) {
+			fprintf(fout, "%18u %9s %8s %8s", job->job_id,job->partition,
+							job->name,uid_to_string_cached(job->user_id));
+			fprintf(fout," %2s       0:00 %6d", job_state_string_compact(job->job_state),job->node_cnt_wag);
+			if(job->state_desc!=NULL){
+				fprintf(fout," (%s)\n",job->state_desc);
+			}else{
+				fprintf(fout," (%s)\n",job_reason_string(job->state_reason));
+			}
+		}
+
+	}
+	list_iterator_destroy(job_iterator);
+
+	job_iterator = list_iterator_create(job_list);
+	while ((job = (struct job_record *) list_next(job_iterator))) {
+		if (!IS_JOB_COMPLETING(job)
+						   && (IS_JOB_PENDING(job)
+						       || IS_JOB_TIMEOUT(job)
+						       || IS_JOB_DEADLINE(job)
+						       || IS_JOB_FAILED(job))) {
+			continue;
+		}
+		if (!IS_JOB_COMPLETE(job)){
+        	fprintf(fout, "%18u %9s %8s %8s", job->job_id,job->partition,
+							job->name,uid_to_string_cached(job->user_id));
+        	char str[32];
+        	_sim_print_secs(str,now-job->start_time,10,1,0);
+			fprintf(fout," %2s %10s %6d %s\n", job_state_string_compact(job->job_state),str,job->node_cnt,job->nodes);
+        }
+	}
+	list_iterator_destroy(job_iterator);
+
+
 
 	fclose(fout);
 }
