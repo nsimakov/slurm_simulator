@@ -85,6 +85,8 @@ extern int sched_interval;
 static int      sim_job_sched_cnt = 0;
 static pthread_mutex_t sim_sched_cnt_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+void sim_sdiag_mini();
+
 //fill slurm_node_registration_status_msg_t from fake slurmd
 static void _sim_fill_slurm_node_registration_status_msg(slurm_node_registration_status_msg_t *msg)
 {
@@ -340,7 +342,7 @@ static int _sim_submit_job(job_trace_t* jobd)
 	req_msg.msg_type = REQUEST_SUBMIT_BATCH_JOB ;
 	req_msg.data     = req;
 
-	req_msg.auth_cred=g_slurm_auth_create(NULL,2,slurm_get_auth_info());
+	req_msg.auth_cred=g_slurm_auth_create(slurm_get_auth_info());
 
 	int error_code=_sim_slurm_rpc_submit_batch_job(&req_msg);
 
@@ -398,7 +400,7 @@ extern void sim_agent_queue_request_joblaunch(struct job_record *job_ptr, batch_
 static int _sim_send_complete_batch_script_msg(uint32_t jobid, int err, int status)
 {
 	//_slurm_rpc_complete_batch_script(&req_msg, 0);
-	uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL,2,slurm_get_auth_info()), slurmctld_config.auth_info);
+	uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(slurm_get_auth_info()), slurmctld_config.auth_info);
 
 	int error_code = job_complete(jobid, uid, false, false, SLURM_SUCCESS);
 	if(error_code!=SLURM_SUCCESS){
@@ -508,7 +510,7 @@ extern int sim_cancel_jobs()
 		{
 			(*sim_jobs_done)++;
 			debug2("SIM: Sending REQUEST_CANCEL_JOB for job %d", event_jid);
-			uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(NULL,2,slurm_get_auth_info()), slurmctld_config.auth_info);
+			uid_t uid = g_slurm_auth_get_uid(g_slurm_auth_create(slurm_get_auth_info()), slurmctld_config.auth_info);
 			job_signal(event_jid, SIGKILL, 0, uid,false);
 
 			remove_from_in_queue_trace_record(trace);

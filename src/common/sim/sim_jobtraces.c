@@ -143,6 +143,9 @@ job_trace_t* read_single_trace(FILE *trace_file)
 	read_single_var(trace->tasks_per_node,trace_file);
 	read_string(trace->reservation, trace_file);
 	read_string(trace->dependency, trace_file);
+
+	read_single_var(trace->pn_min_memory,trace_file);
+	/*
 	uint64_t pn_min_memory;
 	read_single_var(pn_min_memory,trace_file);
 	if(pn_min_memory==NO_VAL64){
@@ -155,7 +158,7 @@ job_trace_t* read_single_trace(FILE *trace_file)
 		if(req_mem_per_cpu){
 			trace->pn_min_memory=trace->pn_min_memory|SIM_OLD_MEM_PER_CPU;
 		}
-	}
+	}*/
 
 	read_string(trace->features, trace_file);
 	read_string(trace->gres, trace_file);
