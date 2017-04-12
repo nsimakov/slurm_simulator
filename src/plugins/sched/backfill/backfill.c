@@ -95,6 +95,10 @@
 #include "src/slurmctld/srun_comm.h"
 #include "backfill.h"
 
+#ifdef SLURM_SIMULATOR
+#include "src/common/sim/sim.h"
+#endif
+
 #define BACKFILL_INTERVAL	30
 #define BACKFILL_RESOLUTION	60
 #define BACKFILL_WINDOW		(24 * 60 * 60)
@@ -809,6 +813,10 @@ static int _yield_locks(int usec)
 	part_update = last_part_update;
 
 	unlock_slurmctld(all_locks);
+#ifdef SLURM_SIMULATOR
+	/* in simulator execute mini loop */
+	sim_mini_loop();
+#endif
 	while (!stop_backfill) {
 		bf_sleep_usec += _my_sleep(usec);
 		if ((defer_rpc_cnt == 0) ||
@@ -1003,6 +1011,12 @@ static int _attempt_backfill(void)
 		njobs = xmalloc(BF_MAX_USERS * sizeof(uint16_t));
 	}
 
+#ifdef SLURM_SIMULATOR
+	uint64_t bf_start_real_utime=get_real_utime();
+	uint64_t bf_start_sim_utime=get_sim_utime();
+	uint64_t cycle_start_real_utime=bf_start_real_utime;
+	uint64_t cycle_start_sim_utime=bf_start_sim_utime;
+#endif
 	sort_job_queue(job_queue);
 	while (1) {
 		uint32_t bf_job_id, bf_array_task_id, bf_job_priority;
@@ -1506,6 +1520,12 @@ next_task:
 		if (!already_counted) {
 			slurmctld_diag_stats.bf_last_depth_try++;
 			already_counted = true;
+			
+#ifdef SLURM_SIMULATOR
+			sim_backfill_step_scale(cycle_start_sim_utime,cycle_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
+			cycle_start_real_utime=get_real_utime();
+			cycle_start_sim_utime=get_sim_utime();
+#endif
 		}
 		if (debug_flags & DEBUG_FLAG_BACKFILL_MAP)
 			_dump_job_test(job_ptr, avail_bitmap, start_res);
@@ -1849,6 +1869,9 @@ next_task:
 				goto next_task;
 		}
 	}
+#ifdef SLURM_SIMULATOR
+	sim_backfill_scale(bf_start_sim_utime,bf_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
+#endif
 	xfree(bf_part_jobs);
 	xfree(bf_part_resv);
 	xfree(bf_part_ptr);
@@ -2142,3 +2165,66 @@ static bool _test_resv_overlap(node_space_map_t *node_space,
 	}
 	return overlap;
 }
+
+
+#ifdef SLURM_SIMULATOR
+/* fake backfill_agent called from simulation main loop
+ * if the time right do backfill if not return the control
+ * return 1 if backfill was executed 0 if not*/
+extern int sim_backfill_agent(void)
+{
+	uint64_t now=get_sim_utime();
+	double wait_time;
+	static time_t last_backfill_time = 0;
+	static uint64_t last_backfill_utime = 0;
+	static uint64_t next_backfill_utime = 0;
+	static bool load_config = true;
+	static bool short_sleep = false;
+
+	slurmctld_lock_t all_locks = {
+				READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK };
+
+	int run_backfill=0;
+
+	if(load_config == true){
+		_load_config();
+		config_flag = false;
+		load_config = false;
+	}
+	if(next_backfill_utime==0){
+		next_backfill_utime=now+backfill_interval*1000000;
+	}
+
+	if(next_backfill_utime<now){
+		//agent kinda awaken from sleep
+		run_backfill=1;
+
+		//if nothing interesting happence lets sleep more
+		wait_time = time(NULL)-last_backfill_time;
+		if ((wait_time < backfill_interval) || !_more_work(last_backfill_time)) {
+			short_sleep = true;
+			run_backfill=0;
+		}
+
+		//run backfill
+		if(run_backfill == 1){
+			lock_slurmctld(all_locks);
+			(void) _attempt_backfill();
+			last_backfill_utime = get_sim_utime();
+			last_backfill_time = time(NULL);
+			(void) bb_g_job_try_stage_in();
+			unlock_slurmctld(all_locks);
+			short_sleep = false;
+		}
+
+		//next time to attempt backfill
+		now=get_sim_utime();
+		if(short_sleep == true){
+			next_backfill_utime=now+1000000;
+		}else{
+			next_backfill_utime=now+backfill_interval*1000000;
+		}
+	}
+	return run_backfill;
+}
+#endif

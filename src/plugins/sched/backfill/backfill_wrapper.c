@@ -61,6 +61,11 @@ static int plugin_errno = SLURM_SUCCESS;
 static pthread_t backfill_thread = 0;
 static pthread_mutex_t thread_flag_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#ifdef SLURM_SIMULATOR
+extern int (*sim_backfill_agent_ref)(void);
+extern int sim_backfill_agent(void);
+#endif
+
 int init( void )
 {
 	pthread_attr_t attr;
@@ -78,6 +83,15 @@ int init( void )
 		slurm_mutex_unlock( &thread_flag_mutex );
 		return SLURM_ERROR;
 	}
+#ifdef SLURM_SIMULATOR
+	/* in simulation mode we call backfill from simulation main loop */
+	backfill_thread=1;
+
+	/*save the function to call backfill once */
+	sim_backfill_agent_ref=sim_backfill_agent;
+	//sim_sched_plugin_attempt_sched_ref=sim_sched_plugin_attempt_backfill;
+	return SLURM_SUCCESS;
+#endif
 
 	slurm_attr_init( &attr );
 	/* since we do a join on this later we don't make it detached */

@@ -114,6 +114,9 @@
 #include "src/slurmctld/state_save.h"
 #include "src/slurmctld/trigger_mgr.h"
 
+#ifdef SLURM_SIMULATOR
+#include "src/common/sim/sim.h"
+#endif
 
 #define CRED_LIFE         60	/* Job credential lifetime in seconds */
 #define DEFAULT_DAEMONIZE 1	/* Run as daemon by default if set */
@@ -556,6 +559,12 @@ int main(int argc, char **argv)
 		if (slurm_mcs_init() != SLURM_SUCCESS)
 			fatal("failed to initialize mcs plugin");
 
+#ifdef SLURM_SIMULATOR
+		/* Get to simulator controller, the rest of this function would
+		 * be not executed.
+		 */
+		sim_controller();
+#endif
 		/*
 		 * create attached thread to process RPCs
 		 */
