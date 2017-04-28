@@ -565,17 +565,72 @@ void determine_users_sim_path()
 
 int getting_simulation_users()
 {
-	char username[100], users_sim_file_name[128];
+	char username[128], users_sim_file_name[512];
 	char uid_string[10];
+	char stmp[128];
 
 	int rv = 0;
 
 	if (sim_users_list)
 		return 0;
 
+	FILE *fin;
+	char *line;
+	ssize_t read;
+	size_t len;
+
+    //read real users from /etc/passwd
+	fin=fopen("/etc/passwd","rt");
+	if (fin ==NULL) {
+		info("ERROR: SIM: can not open /etc/passwd");
+		return -1;
+	}
+	//printf("Reading users\n");
+
+	debug("SIM: Starting reading real users from /etc/passwd");
+
+	line = NULL;
+	len = 0;
+
+	while ((read = getline(&line, &len, fin)) != -1) {
+		size_t i;
+		int tmp_uid,tmp_gid;
+		for(i=0;i<len;++i)
+			if(line[i]==':')
+				line[i]=' ';
+
+		read=sscanf(line,"%s x %d %d",username,&tmp_uid,&tmp_gid);
+		if(read==2)
+			tmp_gid=100;
+
+		if(read<2){
+			info("ERROR: SIM: unknown format of /etc/passwd for %s",line);
+			continue;
+		}
+
+		sim_user_info_t * new_sim_user = xmalloc(sizeof(sim_user_info_t));
+		if (new_sim_user == NULL) {
+			error("SIM: Malloc error for new sim user");
+			rv = -1;
+			break;
+		}
+		debug("Reading user %s", username);
+		//printf("%s %d %d\n",username,tmp_uid,tmp_gid);
+		new_sim_user->sim_name = xstrdup(username);
+		new_sim_user->sim_uid = (uid_t)tmp_uid;
+		new_sim_user->sim_gid = (gid_t)tmp_gid;
+
+		// Inserting as list head
+		new_sim_user->next = sim_users_list;
+		sim_users_list = new_sim_user;
+
+	}
+	free(line);
+	fclose(fin);
+	//read simulated users
 	determine_users_sim_path();
 	sprintf(users_sim_file_name, "%s%s", users_sim_path, "users.sim");
-	FILE *fin=fopen(users_sim_file_name,"rt");
+	fin=fopen(users_sim_file_name,"rt");
 	if (fin ==NULL) {
 		info("ERROR: SIM: no users.sim available");
 		return -1;
@@ -583,9 +638,8 @@ int getting_simulation_users()
 
 	debug("SIM: Starting reading users...");
 
-	char *line = NULL;
-	ssize_t read;
-	size_t i,len = 0;
+	line=NULL;
+	len = 0;
 
 	while ((read = getline(&line, &len, fin)) != -1) {
 		size_t i;
@@ -607,19 +661,20 @@ int getting_simulation_users()
 		if (new_sim_user == NULL) {
 			error("SIM: Malloc error for new sim user");
 			rv = -1;
-			goto finish;
+			break;
 		}
 		debug("Reading user %s", username);
 		new_sim_user->sim_name = xstrdup(username);
 		new_sim_user->sim_uid = (uid_t)tmp_uid;
 		new_sim_user->sim_gid = (gid_t)tmp_gid;
 
+		//printf("%s %d %d\n",username,tmp_uid,tmp_gid);
+
 		// Inserting as list head
 		new_sim_user->next = sim_users_list;
 		sim_users_list = new_sim_user;
 
 	}
-finish:
 	free(line);
 	fclose(fin);
 	return rv;
