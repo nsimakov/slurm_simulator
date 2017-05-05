@@ -124,7 +124,8 @@ extern int sim_read_sim_conf(void)
 		s_p_get_uint32(&slurm_sim_conf->squeue_period, "squeuePeriod", tbl);
 		s_p_get_string(&slurm_sim_conf->squeue_file_out, "squeueFileOut", tbl);
 
-		s_p_get_string(&slurm_sim_conf->shared_memory_name, "SharedMemoryName", tbl);
+		if(!s_p_get_string(&slurm_sim_conf->shared_memory_name, "SharedMemoryName", tbl))
+			slurm_sim_conf->shared_memory_name=xstrdup("/slurm_sim.shm");
 
 		s_p_get_string(&slurm_sim_conf->run_id,"RunID",tbl);
 
