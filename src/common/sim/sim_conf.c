@@ -36,7 +36,6 @@ extern int sim_read_sim_conf(void)
 		{"AfterJobLaunchTimeIncreament", S_P_UINT32},
 		{"BFBetweenJobsChecksTimeIncreament", S_P_UINT32},
 		{"JobsTraceFile", S_P_STRING},
-
 		{"sdiagPeriod", S_P_UINT32},
 		{"sdiagFileOut", S_P_STRING},
 		{"sprioPeriod", S_P_UINT32},
@@ -46,6 +45,8 @@ extern int sim_read_sim_conf(void)
 		{"squeuePeriod", S_P_UINT32},
 		{"squeueFileOut", S_P_STRING},
 		{"SimStats", S_P_STRING},
+		{"RunID", S_P_STRING},
+		{"scalingFactor", S_P_DOUBLE},
 		{"bf_model_real_prefactor", S_P_DOUBLE},
 		{"bf_model_real_power", S_P_DOUBLE},
 		{"bf_model_sim_prefactor", S_P_DOUBLE},
@@ -75,7 +76,9 @@ extern int sim_read_sim_conf(void)
 	slurm_sim_conf->sinfo_file_out=NULL;
 	slurm_sim_conf->squeue_period=0;
 	slurm_sim_conf->squeue_file_out=NULL;
+	slurm_sim_conf->run_id=NULL;
 
+	slurm_sim_conf->scaling_factor=1.0;
 	slurm_sim_conf->bf_model_real_prefactor=1.0;
 	slurm_sim_conf->bf_model_real_power=1.0;
 	slurm_sim_conf->bf_model_sim_prefactor=1.0;
@@ -121,12 +124,30 @@ extern int sim_read_sim_conf(void)
 		s_p_get_uint32(&slurm_sim_conf->squeue_period, "squeuePeriod", tbl);
 		s_p_get_string(&slurm_sim_conf->squeue_file_out, "squeueFileOut", tbl);
 
-		s_p_get_double(&slurm_sim_conf->bf_model_real_prefactor, "bf_model_real_prefactor", tbl);
-		s_p_get_double(&slurm_sim_conf->bf_model_real_power, "bf_model_real_power", tbl);
-		s_p_get_double(&slurm_sim_conf->bf_model_sim_prefactor, "bf_model_sim_prefactor", tbl);
-		s_p_get_double(&slurm_sim_conf->bf_model_sim_power, "bf_model_sim_power", tbl);
-
 		s_p_get_string(&slurm_sim_conf->shared_memory_name, "SharedMemoryName", tbl);
+
+		s_p_get_string(&slurm_sim_conf->run_id,"RunID",tbl);
+
+		int scaling_factor_is_set=s_p_get_double(&slurm_sim_conf->scaling_factor, "scalingFactor", tbl);
+		int bf_model_scaling_is_set=0;
+		bf_model_scaling_is_set+=s_p_get_double(&slurm_sim_conf->bf_model_real_prefactor, "bf_model_real_prefactor", tbl);
+		bf_model_scaling_is_set+=s_p_get_double(&slurm_sim_conf->bf_model_real_power, "bf_model_real_power", tbl);
+		bf_model_scaling_is_set+=s_p_get_double(&slurm_sim_conf->bf_model_sim_prefactor, "bf_model_sim_prefactor", tbl);
+		bf_model_scaling_is_set+=s_p_get_double(&slurm_sim_conf->bf_model_sim_power, "bf_model_sim_power", tbl);
+
+		if(scaling_factor_is_set>0 && bf_model_scaling_is_set>0){
+			fatal("scalingFactor is set in sim.conf as well as "
+				  "bf_model_real_prefactor, bf_model_real_power, bf_model_sim_prefactor and bf_model_sim_power are set."
+		          "This two parameters set are exclusive!");
+		}
+		if(scaling_factor_is_set>0){
+			slurm_sim_conf->bf_model_real_prefactor=slurm_sim_conf->scaling_factor;
+			slurm_sim_conf->bf_model_real_power=1.0;
+			slurm_sim_conf->bf_model_sim_prefactor=1.0;
+			slurm_sim_conf->bf_model_sim_power=1.0;
+		}else{
+			slurm_sim_conf->scaling_factor=-1.0;
+		}
 
 		s_p_hashtbl_destroy(tbl);
 	}
@@ -135,5 +156,78 @@ extern int sim_read_sim_conf(void)
 
 	return SLURM_SUCCESS;
 }
+extern int sim_print_sim_conf(void)
+{
+	if(slurm_sim_conf->jobs_trace_file!=NULL)
+		info("JobsTraceFile=%s",slurm_sim_conf->jobs_trace_file);
+	else
+		info("JobsTraceFile=(null)");
 
+	if(slurm_sim_conf->sdiag_file_out!=NULL)
+		info("sdiagFileOut=%s",slurm_sim_conf->sdiag_file_out);
+	else
+		info("sdiagFileOut=(null)");
+
+
+	if(slurm_sim_conf->sim_stat!=NULL)
+		info("SimStats=%s",slurm_sim_conf->sim_stat);
+	else
+		info("SimStats=(null)");
+
+	info("TimeStart=%zu",slurm_sim_conf->time_start);
+	if(slurm_sim_conf->time_start==0)
+		info("    i.e. Slurm Simulator spins forever");
+	if(slurm_sim_conf->time_start==1)
+		info("    i.e. Slurm Simulator stops after last job is done.");
+
+	info("StartSecondsBeforeFirstJob=%ld",slurm_sim_conf->start_seconds_before_first_job);
+	info("TimeStop=%zu",slurm_sim_conf->time_stop);
+	info("TimeStep=%zu usec",slurm_sim_conf->time_step);
+	info("AfterJobLaunchTimeIncreament=%zu",slurm_sim_conf->after_job_launch_time_increament);
+	info("BFBetweenJobsChecksTimeIncreament=%zu",slurm_sim_conf->bf_between_jobs_check_time_increament);
+
+	info("sdiagPeriod=%zu",slurm_sim_conf->sdiag_period);
+	if(slurm_sim_conf->sdiag_file_out!=NULL)
+		info("sdiagFileOut=%s",slurm_sim_conf->sdiag_file_out);
+	else
+		info("sdiagFileOut=(null)");
+
+	info("sprioPeriod=%zu",slurm_sim_conf->sprio_period);
+	if(slurm_sim_conf->sprio_file_out!=NULL)
+		info("sprioFileOut=%s",slurm_sim_conf->sprio_file_out);
+	else
+		info("sprioFileOut=(null)");
+
+	info("sinfoPeriod=%zu",slurm_sim_conf->sinfo_period);
+	if(slurm_sim_conf->sinfo_file_out!=NULL)
+		info("sinfoFileOut=%s",slurm_sim_conf->sinfo_file_out);
+	else
+		info("sinfoFileOut=(null)");
+
+	info("squeuePeriod=%zu",slurm_sim_conf->squeue_period);
+	if(slurm_sim_conf->squeue_file_out!=NULL)
+		info("squeueFileOut=%s",slurm_sim_conf->squeue_file_out);
+	else
+		info("squeueFileOut=(null)");
+
+	if(slurm_sim_conf->shared_memory_name!=NULL)
+		info("SharedMemoryName=%s",slurm_sim_conf->shared_memory_name);
+	else
+		info("SharedMemoryName=(null)");
+
+	if(slurm_sim_conf->run_id!=NULL)
+		info("RunID=%s",slurm_sim_conf->run_id);
+	else
+		info("RunID=(null)");
+
+	if(slurm_sim_conf->scaling_factor>0.0){
+		info("scalingFactor=%f",slurm_sim_conf->scaling_factor);
+	}else{
+		info("bf_model_real_prefactor=%f",slurm_sim_conf->bf_model_real_prefactor);
+		info("bf_model_real_power=%f",slurm_sim_conf->bf_model_real_power);
+		info("bf_model_sim_prefactor=%f",slurm_sim_conf->bf_model_sim_prefactor);
+		info("bf_model_sim_power=%f",slurm_sim_conf->bf_model_sim_power);
+	}
+	return SLURM_SUCCESS;
+}
 #endif

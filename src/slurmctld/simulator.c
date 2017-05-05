@@ -1228,7 +1228,8 @@ void sim_submit_jobs()
 
 extern void sim_controller()
 {
-	//read conf
+	//print conf
+	sim_print_sim_conf();
 
 	//set time
 	sim_pause_clock();
