@@ -129,6 +129,7 @@ static pthread_mutex_t config_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool config_flag = false;
 static uint64_t debug_flags = 0;
 static int backfill_interval = BACKFILL_INTERVAL;
+static int backfill_interval_sleep = BACKFILL_INTERVAL;
 static int backfill_resolution = BACKFILL_RESOLUTION;
 static int backfill_window = BACKFILL_WINDOW;
 static int bf_job_part_count_reserve = 0;
@@ -504,6 +505,16 @@ static void _load_config(void)
 	} else {
 		backfill_interval = BACKFILL_INTERVAL;
 	}
+	if (sched_params && (tmp_ptr = strstr(sched_params, "bf_interval_sleep="))) {
+		backfill_interval_sleep = atoi(tmp_ptr + 12);
+		if (backfill_interval < 1) {
+			error("Invalid SchedulerParameters bf_interval_sleep: %d",
+					backfill_interval_sleep);
+			backfill_interval_sleep=backfill_interval;
+		}
+	} else {
+		backfill_interval_sleep=backfill_interval;
+	}
 
 	if (sched_params && (tmp_ptr = strstr(sched_params, "bf_window="))) {
 		backfill_window = atoi(tmp_ptr + 10) * 60;  /* mins to secs */
@@ -750,7 +761,7 @@ extern void *backfill_agent(void *args)
 		if (short_sleep)
 			_my_sleep(1000000);
 		else
-			_my_sleep(backfill_interval * 1000000);
+			_my_sleep(backfill_interval_sleep * 1000000);
 		if (stop_backfill)
 			break;
 		slurm_mutex_lock(&config_lock);
@@ -765,7 +776,7 @@ extern void *backfill_agent(void *args)
 			_load_config();
 		now = time(NULL);
 		wait_time = difftime(now, last_backfill_time);
-		if ((wait_time < backfill_interval) ||
+		if ((wait_time < backfill_interval_sleep) ||
 		    job_is_completing() || _many_pending_rpcs() ||
 		    !avail_front_end(NULL) || !_more_work(last_backfill_time)) {
 			short_sleep = true;
