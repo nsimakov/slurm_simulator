@@ -1933,6 +1933,9 @@ next_task:
 				launch_job(job_ptr);
 			rebuild_job_part_list(job_ptr);
 			job_cnt++;
+#ifdef SLURM_SIMULATOR
+			job_ptr->which_sched=1;
+#endif
 			if (is_job_array_head &&
 			    (job_ptr->array_task_id != NO_VAL)) {
 				/* Try starting another task of the job array */

@@ -32,7 +32,7 @@ extern int sim_read_sim_conf(void)
 		{"TimeStart", S_P_UINT32},
 		{"StartSecondsBeforeFirstJob", S_P_LONG},
 		{"TimeStop", S_P_UINT32},
-		{"TimeStep", S_P_UINT32},
+		{"TimeStep", S_P_DOUBLE},
 		{"AfterJobLaunchTimeIncreament", S_P_UINT32},
 		{"BFBetweenJobsChecksTimeIncreament", S_P_UINT32},
 		{"JobsTraceFile", S_P_STRING},
@@ -56,6 +56,7 @@ extern int sim_read_sim_conf(void)
 	s_p_hashtbl_t *tbl = NULL;
 	char *conf_path = NULL;
 	struct stat buf;
+	double time_step;
 
 	/* Set initial values */
 	if (slurm_sim_conf == NULL) {
@@ -111,7 +112,13 @@ extern int sim_read_sim_conf(void)
 		s_p_get_uint32(&slurm_sim_conf->time_start, "TimeStart", tbl);
 		s_p_get_long(&slurm_sim_conf->start_seconds_before_first_job, "StartSecondsBeforeFirstJob", tbl);
 		s_p_get_uint32(&slurm_sim_conf->time_stop, "TimeStop", tbl);
-		s_p_get_uint32(&slurm_sim_conf->time_step, "TimeStep", tbl);
+
+		if(s_p_get_double(&time_step, "TimeStep", tbl)){
+			if(time_step>600)
+				fatal("SIM: TimeStep is too big (%f). Should be 1 second or less",time_step);
+			slurm_sim_conf->time_step=(uint32_t)(time_step*1000000.0);
+			info("slurm_sim_conf->time_step=%d us",slurm_sim_conf->time_step);
+		}
 		s_p_get_uint32(&slurm_sim_conf->after_job_launch_time_increament, "AfterJobLaunchTimeIncreament", tbl);
 		s_p_get_uint32(&slurm_sim_conf->bf_between_jobs_check_time_increament, "BFBetweenJobsChecksTimeIncreament", tbl);
 

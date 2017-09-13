@@ -199,7 +199,7 @@ extern int slurm_jobcomp_set_location ( char * location )
 	} else
 		fchmod(job_comp_fd, 0644);
 	//>>SLURM_SIMULATOR
-	char header[]="JobID|JobIDRaw|Cluster|Partition|Account|Group|GID|User|UID|Submit|Eligible|Start|End|Elapsed|ExitCode|State|NNodes|NCPUS|ReqCPUS|ReqMem|Timelimit|NodeList|QOS|JobName\n\0";
+	char header[]="JobID|JobIDRaw|Cluster|Partition|Account|Group|GID|User|UID|Submit|Eligible|Start|End|Elapsed|ExitCode|State|NNodes|NCPUS|ReqCPUS|ReqMem|Timelimit|NodeList|QOS|ScheduledBy|JobName\n\0";
 	size_t offset = 0, tot_size, wrote;
 	tot_size = strlen(header);
 
@@ -401,14 +401,14 @@ extern int slurm_jobcomp_log_record ( struct job_record *job_ptr )
 	slurmdb_qos_rec_t *qos_ptr = job_ptr->qos_ptr;
 
 	snprintf(job_rec, sizeof(job_rec),
-		 "%s|%lu|%s|%s|%s|%s|%u|%s|%u|%s|%s|%s|%s|%s|%s|%s|%u|%u|%u|%s|%s|%s|%s|%s\n",
+		 "%s|%lu|%s|%s|%s|%s|%u|%s|%u|%s|%s|%s|%s|%s|%s|%s|%u|%u|%u|%s|%s|%s|%s|%u|%s\n",
 		 job_id_str,(unsigned long)job_ptr->job_id,slurmctld_cluster_name,job_ptr->partition,job_ptr->account,
 		 groupname,job_ptr->group_id,usr_str,job_ptr->user_id,
 		 submit_str,eligible_str,start_str, end_str,
 		 elapsed_str,exit_code_str,state_string,
 		 job_ptr->node_cnt,job_ptr->total_cpus,
 		 job_ptr->details->min_cpus,req_mem_str,
-		 time_limit_str,job_ptr->nodes,qos_ptr->name,job_ptr->name);
+		 time_limit_str,job_ptr->nodes,qos_ptr->name,job_ptr->which_sched,job_ptr->name);
 	//<<SLURM_SIMULATOR
 	tot_size = strlen(job_rec);
 

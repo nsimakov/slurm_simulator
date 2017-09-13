@@ -990,6 +990,7 @@ static int _attempt_backfill(void)
 	slurmctld_diag_stats.bf_last_depth_try = 0;
 	slurmctld_diag_stats.bf_when_last_cycle = now;
 	slurmctld_diag_stats.bf_active = 1;
+	slurmctld_diag_stats.last_backfilled_jobs = 0;
 
 	node_space = xmalloc(sizeof(node_space_map_t) *
 			     (max_backfill_job_cnt * 2 + 1));
@@ -1978,6 +1979,9 @@ static int _start_job(struct job_record *job_ptr, bitstr_t *resv_bitmap)
 #endif
 			)
 			launch_job(job_ptr);
+#ifdef SLURM_SIMULATOR
+			job_ptr->which_sched=2;
+#endif
 		slurmctld_diag_stats.backfilled_jobs++;
 		slurmctld_diag_stats.last_backfilled_jobs++;
 		if (debug_flags & DEBUG_FLAG_BACKFILL) {

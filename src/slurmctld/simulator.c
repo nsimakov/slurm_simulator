@@ -599,6 +599,7 @@ extern void schedule_plugin_run_once()
 		fprintf(fout, "\tLast depth cycle: %u\n", slurmctld_diag_stats.bf_last_depth);
 		fprintf(fout, "\tLast depth cycle (try sched): %u\n", slurmctld_diag_stats.bf_last_depth_try);
 		fprintf(fout, "\tLast queue length: %u\n", slurmctld_diag_stats.bf_queue_len);
+		fprintf(fout, "\tLast backfilled jobs: %u\n", slurmctld_diag_stats.last_backfilled_jobs);
 
 		fprintf(fout, "\tRun real time: %.6f\n", t);
 		fprintf(fout, "\tRun real utime: %ld\n",tms_utime);
