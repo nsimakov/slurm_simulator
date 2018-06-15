@@ -464,7 +464,9 @@ int main(int argc, char **argv)
 	if (switch_g_slurmctld_init() != SLURM_SUCCESS )
 		fatal( "failed to initialize switch plugin");
 	config_power_mgr();
+#ifndef SLURM_SIMULATOR
 	agent_init();
+#endif
 	if (node_features_g_node_power() && !power_save_test()) {
 		fatal("PowerSave required with NodeFeatures plugin, "
 		      "but not fully configured (SuspendProgram, "
@@ -556,8 +558,9 @@ int main(int argc, char **argv)
 
 		/* call after registering so that the current cluster's
 		 * control_host and control_port will be filled in. */
+#ifndef SLURM_SIMULATOR
 		fed_mgr_init(acct_db_conn);
-
+#endif
 		if (slurm_priority_init() != SLURM_SUCCESS)
 			fatal("failed to initialize priority plugin");
 		if (slurm_sched_init() != SLURM_SUCCESS)
