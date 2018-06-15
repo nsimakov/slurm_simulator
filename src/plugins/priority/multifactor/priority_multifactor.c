@@ -1699,7 +1699,15 @@ static void _set_usage_efctv(slurmdb_assoc_rec_t *assoc)
 			(s_child / (long double) s_all_siblings);
 }
 
+#ifdef SLURM_SIMULATOR
+extern int (*_sim_run_priority_decay)(void);
 
+int run_priority_decay()
+{
+	_decay_thread(NULL);
+	return SLURM_SUCCESS;
+}
+#endif
 /*
  * init() is called when the plugin is loaded, before any other functions
  * are called.  Put global initialization here.
@@ -1748,6 +1756,15 @@ int init ( void )
 			      "before we can init the priority/multifactor "
 			      "plugin");
 		assoc_mgr_root_assoc->usage->usage_efctv = 1.0;
+
+#ifdef SLURM_SIMULATOR
+		 //in simulator _decay_thread called from simulator loop
+		 //so no extra threads
+		 _sim_run_priority_decay=run_priority_decay;
+		 xfree(temp);
+		 debug("%s loaded", plugin_name);
+		 return SLURM_SUCCESS;
+#endif
 
 		/* The decay_thread sets up some global variables that are
 		 * needed outside of the decay_thread (i.e. decay_factor,
