@@ -117,6 +117,9 @@
 #include "src/slurmctld/state_save.h"
 #include "src/slurmctld/trigger_mgr.h"
 
+#ifdef SLURM_SIMULATOR
+#include "src/common/sim/sim.h"
+#endif
 
 #define DEFAULT_DAEMONIZE 1	/* Run as daemon by default if set */
 #define DEFAULT_RECOVER   1	/* Default state recovery on restart
@@ -567,6 +570,13 @@ int main(int argc, char **argv)
 			fatal( "failed to initialize power management plugin");
 		if (slurm_mcs_init() != SLURM_SUCCESS)
 			fatal("failed to initialize mcs plugin");
+
+#ifdef SLURM_SIMULATOR
+		/* Get to simulator controller, the rest of this function would
+		 * be not executed.
+		 */
+		sim_controller();
+#endif
 
 		/*
 		 * create attached thread to process RPCs

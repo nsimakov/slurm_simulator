@@ -1886,6 +1886,11 @@ unpack_error:
  ****************************************************************************/
 static void _create_agent(void)
 {
+#ifdef SLURM_SIMULATOR
+	/* in simulator messages send from simulator main loop if needed
+	 * or if implemented*/
+	return;
+#endif
 	/* this needs to be set because the agent thread will do
 	   nothing if the connection was closed and then opened again */
 	slurmdbd_shutdown = 0;

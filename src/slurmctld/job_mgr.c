@@ -7339,6 +7339,10 @@ extern int validate_job_create_req(job_desc_msg_t * job_desc, uid_t submit_uid,
 static int
 _copy_job_desc_to_file(job_desc_msg_t * job_desc, uint32_t job_id)
 {
+#ifdef SLURM_SIMULATOR
+	/* don't copy in simulation mode */
+	return SLURM_SUCCESS;
+#endif
 	int error_code = 0, hash;
 	char *dir_name, *file_name;
 	DEF_TIMERS;
@@ -7506,6 +7510,15 @@ char **get_job_env(struct job_record *job_ptr, uint32_t * env_size)
 	int cc, fd = -1, hash;
 	uint32_t use_id;
 
+#ifdef SLURM_SIMULATOR
+        /* Simulator's dummy script. */
+        environment  = (char**)xmalloc(sizeof(char*)*2);
+        environment[0] = xstrdup("HOME=/root");
+        environment[1] = NULL;
+        *env_size=1;
+        return environment;
+#endif
+
 	use_id = (job_ptr->array_task_id != NO_VAL) ?
 		job_ptr->array_job_id : job_ptr->job_id;
 	hash = use_id % 10;
@@ -7539,6 +7552,12 @@ char *get_job_script(struct job_record *job_ptr)
 	char *file_name = NULL, *script = NULL;
 	int fd = -1, hash;
 	uint32_t use_id;
+
+#ifdef SLURM_SIMULATOR
+	/* Simulator dummy script. */
+	script = xstrdup("\necho \"Generated BATCH Job\"\necho \"La Fine!\"\n");
+	return script;
+#endif
 
 	if (!job_ptr->batch_flag)
 		return NULL;

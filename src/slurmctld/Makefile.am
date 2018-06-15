@@ -71,6 +71,9 @@ slurmctld_SOURCES =     \
 	trigger_mgr.c	\
 	trigger_mgr.h
 
+if ENABLE_SIMULATOR
+slurmctld_SOURCES += simulator.c
+endif
 
 sbin_PROGRAMS = slurmctld
 
