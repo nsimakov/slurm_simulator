@@ -2344,11 +2344,12 @@ skip_start:
 				goto next_task;
 		}
 	}
+	_job_pack_deadlock_fini();
+	_pack_start_test(node_space);
+
 #ifdef SLURM_SIMULATOR
 	sim_backfill_scale(bf_start_sim_utime,bf_start_real_utime,slurmctld_diag_stats.bf_last_depth_try);
 #endif
-	_job_pack_deadlock_fini();
-	_pack_start_test(node_space);
 
 	xfree(bf_part_jobs);
 	xfree(bf_part_resv);
@@ -3438,15 +3439,16 @@ extern int sim_backfill_agent(void)
 {
 	uint64_t now=get_sim_utime();
 	double wait_time;
+	/* Read config and partitions; Write jobs and nodes */
+	slurmctld_lock_t all_locks = {
+		READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK };
+	bool load_config;
+	bool short_sleep = false;
+	int backfill_cnt = 0;
+
 	static time_t last_backfill_time = 0;
 	static uint64_t last_backfill_utime = 0;
 	static uint64_t next_backfill_utime = 0;
-	static bool load_config = true;
-	static bool short_sleep = false;
-
-	slurmctld_lock_t all_locks = {
-				READ_LOCK, WRITE_LOCK, WRITE_LOCK, READ_LOCK };
-
 	int run_backfill=0;
 
 	if(load_config == true){
@@ -3458,13 +3460,17 @@ extern int sim_backfill_agent(void)
 		next_backfill_utime=now+backfill_interval*1000000;
 	}
 
+	if (pack_job_list==NULL)
+		pack_job_list = list_create(_pack_map_del);
+
 	if(next_backfill_utime<now){
 		//agent kinda awaken from sleep
 		run_backfill=1;
-
+        (void) list_delete_all(pack_job_list, _list_find_all, NULL);
 		//if nothing interesting happence lets sleep more
 		wait_time = time(NULL)-last_backfill_time;
-		if ((wait_time < backfill_interval) || !_more_work(last_backfill_time)) {
+		if ((wait_time < backfill_interval_sleep) ||
+			    job_is_completing(NULL) || !_more_work(last_backfill_time)) {
 			short_sleep = true;
 			run_backfill=0;
 		}
@@ -3472,6 +3478,8 @@ extern int sim_backfill_agent(void)
 		//run backfill
 		if(run_backfill == 1){
 			lock_slurmctld(all_locks);
+			if ((backfill_cnt++ % 2) == 0)
+				_pack_start_clear();
 			(void) _attempt_backfill();
 			last_backfill_utime = get_sim_utime();
 			last_backfill_time = time(NULL);
