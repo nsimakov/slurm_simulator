@@ -578,7 +578,7 @@ int main(int argc, char **argv)
 		/* Get to simulator controller, the rest of this function would
 		 * be not executed.
 		 */
-		sim_controller();
+		return sim_controller();
 #endif
 
 		/*

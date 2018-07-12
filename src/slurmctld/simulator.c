@@ -937,8 +937,10 @@ void sim_sprio()
 			xfree(values);
 		}
 		list_iterator_destroy(itr);
+		FREE_NULL_LIST(priority_factors_list);
 	}
 
+	xfree(prio_type);
 	fclose(fout);
 }
 
@@ -1074,34 +1076,50 @@ void sim_sinfo()
 			if(IS_NODE_FUTURE(node_ptr))
 				hostlist_push_host(nodes_fut,node_ptr->name);
 		}
-		if(hostlist_count(nodes_unk)>0)
+		hostlist_iterator_destroy(itr);
+
+		if(hostlist_count(nodes_unk)>0){
+			char *tmp = hostlist_ranged_string_xmalloc(nodes_unk);
 			fprintf(fout,"%9s %5s %10s %6d    unk %s\n",part_ptr->name,part_avail,timelimit,
-				hostlist_count(nodes_unk),
-				hostlist_ranged_string_xmalloc(nodes_unk));
-		if(hostlist_count(nodes_down)>0)
+				hostlist_count(nodes_unk), tmp);
+			xfree(tmp);
+		}
+		if(hostlist_count(nodes_down)>0){
+			char *tmp = hostlist_ranged_string_xmalloc(nodes_down);
 			fprintf(fout,"%9s %5s %10s %6d   down %s\n",part_ptr->name,part_avail,timelimit,
-				hostlist_count(nodes_down),
-				hostlist_ranged_string_xmalloc(nodes_down));
-		if(hostlist_count(nodes_idle)>0)
+				hostlist_count(nodes_down), tmp);
+			xfree(tmp);
+		}
+		if(hostlist_count(nodes_idle)>0){
+			char *tmp = hostlist_ranged_string_xmalloc(nodes_idle);
 			fprintf(fout,"%9s %5s %10s %6d   idle %s\n",part_ptr->name,part_avail,timelimit,
-				hostlist_count(nodes_idle),
-				hostlist_ranged_string_xmalloc(nodes_idle));
-		if(hostlist_count(nodes_alloc)>0)
+				hostlist_count(nodes_idle), tmp);
+			xfree(tmp);
+		}
+		if(hostlist_count(nodes_alloc)>0){
+			char *tmp = hostlist_ranged_string_xmalloc(nodes_alloc);
 			fprintf(fout,"%9s %5s %10s %6d  alloc %s\n",part_ptr->name,part_avail,timelimit,
-				hostlist_count(nodes_alloc),
-				hostlist_ranged_string_xmalloc(nodes_alloc));
-		if(hostlist_count(nodes_err)>0)
+				hostlist_count(nodes_alloc), tmp);
+			xfree(tmp);
+		}
+		if(hostlist_count(nodes_err)>0){
+			char *tmp = hostlist_ranged_string_xmalloc(nodes_err);
 			fprintf(fout,"%9s %5s %10s %6d    err %s\n",part_ptr->name,part_avail,timelimit,
-				hostlist_count(nodes_err),
-				hostlist_ranged_string_xmalloc(nodes_err));
-		if(hostlist_count(nodes_mix)>0)
+				hostlist_count(nodes_err), tmp);
+			xfree(tmp);
+		}
+		if(hostlist_count(nodes_mix)>0){
+			char *tmp = hostlist_ranged_string_xmalloc(nodes_mix);
 			fprintf(fout,"%9s %5s %10s %6d    mix %s\n",part_ptr->name,part_avail,timelimit,
-				hostlist_count(nodes_mix),
-				hostlist_ranged_string_xmalloc(nodes_mix));
-		if(hostlist_count(nodes_fut)>0)
+				hostlist_count(nodes_mix), tmp);
+			xfree(tmp);
+		}
+		if(hostlist_count(nodes_fut)>0){
+			char *tmp = hostlist_ranged_string_xmalloc(nodes_fut);
 			fprintf(fout,"%9s %5s %10s %6d future %s\n",part_ptr->name,part_avail,timelimit,
-				hostlist_count(nodes_fut),
-				hostlist_ranged_string_xmalloc(nodes_fut));
+				hostlist_count(nodes_fut), tmp);
+			xfree(tmp);
+		}
 
 
 		hostlist_destroy(nodes_fut);
@@ -1227,7 +1245,7 @@ void sim_submit_jobs()
 }
 
 
-extern void sim_controller()
+extern int sim_controller()
 {
 	//print conf
 	sim_print_sim_conf();
@@ -1325,7 +1343,7 @@ extern void sim_controller()
 		else if (slurm_sim_conf->time_stop>1){
 			/*terminate if reached end time*/
 			if(slurm_sim_conf->time_stop <= *sim_utime/1000000) {
-				exit(0);
+				break;
 			}
 		}
 
@@ -1380,6 +1398,8 @@ extern void sim_controller()
 		}
 
 	}
+
+	return 0;
 }
 
 
