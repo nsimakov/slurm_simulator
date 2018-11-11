@@ -1,5 +1,7 @@
 # Slurm Simulator
-##Center for Computational Research, University at Buffalo, SUNY
+
+Center for Computational Research, University at Buffalo, SUNY
+
 
 Slurm is an open source job scheduling system that is widely used in many small and large-scale HPC resources,
 including almost all current XSEDE resources. Like all resource management programs, Slurm is highly tuneable, 
@@ -31,3 +33,9 @@ Toolkit and documentation for slurm simulator repositary:
 Slurm simulator repositary:
 
 > [https://github.com/nsimakov/slurm_simulator](https://github.com/nsimakov/slurm_simulator)
+
+Publications:
+
+1. N.A. Simakov, R.L. DeLeon, M.D. Innus, M.D. Jones, J.P. White, S.M. Gallo, A.K. Patra, and T.R. Furlani. (2018) A Slurm Simulator: Implementation and Parametric Analysis. In: Jarvis S., Wright S., Hammond S. (eds) High Performance Computing Systems. Performance Modeling, Benchmarking, and Simulation. PMBS 2017. Lecture Notes in Computer Science, vol 10724. Springer, Cham. [https://link.springer.com/chapter/10.1007/978-3-319-72971-8_10](https://link.springer.com/chapter/10.1007/978-3-319-72971-8_10)
+
+2.	N.A. Simakov, R.L. DeLeon, M.D. Innus, M.D. Jones, J.P. White, S.M. Gallo, A.K. Patra, and T.R. Furlani. 2018. Slurm Simulator: Improving Slurm Scheduler Performance on Large HPC systems by Utilization of Multiple Controllers and Node Sharing. In Proceedings of the Practice and Experience on Advanced Research Computing (PEARC '18). ACM, New York, NY, USA, Article 25, 8 pages. DOI: [https://doi.org/10.1145/3219104.3219111](https://doi.org/10.1145/3219104.3219111)
