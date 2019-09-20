@@ -12261,7 +12261,7 @@ static int _unpack_block_info(block_info_t **block_info, Buf buffer,
 	if ((rc = slurm_unpack_block_info_members(
 		    bg_rec, buffer, protocol_version))
 	    != SLURM_SUCCESS)
-		xfree(bg_rec);
+		{xfree(bg_rec);}
 	else
 		*block_info = bg_rec;
 	return rc;

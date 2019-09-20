@@ -58,3 +58,8 @@ autom4te.cache
 /src/sview/sview
 testsuite/expect/globals.local
 TAGS
+/.autotools
+/.cproject
+/.project
+/.settings
+/.idea

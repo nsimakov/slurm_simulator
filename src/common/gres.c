@@ -1640,7 +1640,13 @@ static int _node_config_validate(char *node_name, char *orig_config,
 	if (gres_data->node_feature)
 		return rc;
 
+#ifdef SLURM_SIMULATOR
+    /* there is no checking on actial GRes on node for simulator.
+     * All specified GRes are up in simulator*/
+	gres_cnt = gres_data->gres_cnt_config;
+#else
 	gres_cnt = _get_tot_gres_cnt(context_ptr->plugin_id, &set_cnt);
+#endif
 	if (gres_data->gres_cnt_found != gres_cnt) {
 		if (gres_data->gres_cnt_found != NO_VAL64) {
 			info("%s: count changed for node %s from %"PRIu64" "

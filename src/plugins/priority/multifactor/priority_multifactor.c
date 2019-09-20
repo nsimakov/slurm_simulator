@@ -1145,6 +1145,45 @@ static int _decay_apply_new_usage_and_weighted_factors(
 
 static void *_decay_thread(void *no_data)
 {
+#ifdef SLURM_SIMULATOR
+	//in the simulator mode we execute it from simulator loop
+	static int  _decay_thread_initiated=0;
+	static time_t start_time = 0;
+	static time_t last_reset = 0, next_reset = 0;
+	static uint32_t calc_period = 0;
+	static double decay_hl = 0.0;
+	static uint16_t reset_period = 0;
+
+	static time_t now;
+	static double run_delta = 0.0, real_decay = 0.0;
+	static double elapsed;
+
+	/* Write lock on jobs, read lock on nodes and partitions */
+	static slurmctld_lock_t job_write_lock =
+		{ NO_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK, NO_LOCK };
+	static assoc_mgr_lock_t locks = { WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK,
+				   NO_LOCK, NO_LOCK, NO_LOCK };
+
+	start_time = time(NULL);
+
+	if(_decay_thread_initiated)goto _decay_thread_loop;
+
+	calc_period = slurm_get_priority_calc_period();
+	decay_hl = (double)slurm_get_priority_decay_hl();
+	reset_period = slurm_get_priority_reset_period();
+
+	if (decay_hl > 0)
+		decay_factor = 1 - (0.693 / decay_hl);
+
+	_read_last_decay_ran(&g_last_ran, &last_reset);
+	if (last_reset == 0)
+		last_reset = start_time;
+
+	_init_grp_used_cpu_run_secs(g_last_ran);
+
+	_decay_thread_initiated=1;
+	goto _decay_thread_loop;
+#else
 	time_t start_time = time(NULL);
 	time_t last_reset = 0, next_reset = 0;
 	uint32_t calc_period = slurm_get_priority_calc_period();
@@ -1165,6 +1204,7 @@ static void *_decay_thread(void *no_data)
 	if (prctl(PR_SET_NAME, "decay", NULL, NULL, NULL) < 0) {
 		error("%s: cannot set my name to %s %m", __func__, "decay");
 	}
+#endif
 #endif
 	/*
 	 * DECAY_FACTOR DESCRIPTION:
@@ -1217,6 +1257,9 @@ static void *_decay_thread(void *no_data)
 
 	_init_grp_used_cpu_run_secs(g_last_ran);
 
+#ifdef SLURM_SIMULATOR
+_decay_thread_loop:
+#endif
 	while (1) {
 		now = start_time;
 
@@ -1330,6 +1373,9 @@ static void *_decay_thread(void *no_data)
 		now = time(NULL);
 		elapsed = difftime(now, start_time);
 		if (elapsed < calc_period) {
+#ifdef SLURM_SIMULATOR
+			break;
+#endif
 			sleep(calc_period - elapsed);
 			start_time = time(NULL);
 		} else
@@ -1653,7 +1699,15 @@ static void _set_usage_efctv(slurmdb_assoc_rec_t *assoc)
 			(s_child / (long double) s_all_siblings);
 }
 
+#ifdef SLURM_SIMULATOR
+extern int (*_sim_run_priority_decay)(void);
 
+int run_priority_decay()
+{
+	_decay_thread(NULL);
+	return SLURM_SUCCESS;
+}
+#endif
 /*
  * init() is called when the plugin is loaded, before any other functions
  * are called.  Put global initialization here.
@@ -1702,6 +1756,15 @@ int init ( void )
 			      "before we can init the priority/multifactor "
 			      "plugin");
 		assoc_mgr_root_assoc->usage->usage_efctv = 1.0;
+
+#ifdef SLURM_SIMULATOR
+		 //in simulator _decay_thread called from simulator loop
+		 //so no extra threads
+		 _sim_run_priority_decay=run_priority_decay;
+		 xfree(temp);
+		 debug("%s loaded", plugin_name);
+		 return SLURM_SUCCESS;
+#endif
 
 		/* The decay_thread sets up some global variables that are
 		 * needed outside of the decay_thread (i.e. decay_factor,

@@ -117,6 +117,9 @@
 #include "src/slurmctld/state_save.h"
 #include "src/slurmctld/trigger_mgr.h"
 
+#ifdef SLURM_SIMULATOR
+#include "src/common/sim/sim.h"
+#endif
 
 #define DEFAULT_DAEMONIZE 1	/* Run as daemon by default if set */
 #define DEFAULT_RECOVER   1	/* Default state recovery on restart
@@ -461,7 +464,9 @@ int main(int argc, char **argv)
 	if (switch_g_slurmctld_init() != SLURM_SUCCESS )
 		fatal( "failed to initialize switch plugin");
 	config_power_mgr();
+#ifndef SLURM_SIMULATOR
 	agent_init();
+#endif
 	if (node_features_g_node_power() && !power_save_test()) {
 		fatal("PowerSave required with NodeFeatures plugin, "
 		      "but not fully configured (SuspendProgram, "
@@ -553,8 +558,9 @@ int main(int argc, char **argv)
 
 		/* call after registering so that the current cluster's
 		 * control_host and control_port will be filled in. */
+#ifndef SLURM_SIMULATOR
 		fed_mgr_init(acct_db_conn);
-
+#endif
 		if (slurm_priority_init() != SLURM_SUCCESS)
 			fatal("failed to initialize priority plugin");
 		if (slurm_sched_init() != SLURM_SUCCESS)
@@ -567,6 +573,13 @@ int main(int argc, char **argv)
 			fatal( "failed to initialize power management plugin");
 		if (slurm_mcs_init() != SLURM_SUCCESS)
 			fatal("failed to initialize mcs plugin");
+
+#ifdef SLURM_SIMULATOR
+		/* Get to simulator controller, the rest of this function would
+		 * be not executed.
+		 */
+		return sim_controller();
+#endif
 
 		/*
 		 * create attached thread to process RPCs
