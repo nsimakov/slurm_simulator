@@ -152,6 +152,10 @@ static int sched_min_interval = 2;
 static int bb_array_stage_cnt = 10;
 extern diag_stats_t slurmctld_diag_stats;
 
+#ifdef SLURM_SIMULATOR
+extern void sim_agent_queue_request_joblaunch(struct job_record *job_ptr, batch_job_launch_msg_t *launch_msg_ptr);
+#endif
+
 /*
  * Calculate how busy the system is by figuring out how busy each node is.
  */
@@ -1724,6 +1728,9 @@ skip_start:
 				launch_job(job_ptr);
 			rebuild_job_part_list(job_ptr);
 			job_cnt++;
+#ifdef SLURM_SIMULATOR
+			job_ptr->which_sched=1;
+#endif
 			if (is_job_array_head &&
 			    (job_ptr->array_task_id != NO_VAL)) {
 				/* Try starting another task of the job array */
@@ -2446,6 +2453,11 @@ extern void launch_job(struct job_record *job_ptr)
 	launch_msg_ptr = _build_launch_job_msg(launch_job_ptr,protocol_version);
 	if (launch_msg_ptr == NULL)
 		return;
+#ifdef SLURM_SIMULATOR
+	/* in simulator we would not run agent */
+	sim_agent_queue_request_joblaunch(job_ptr,launch_msg_ptr);
+	return;
+#endif
 	if (launch_job_ptr->pack_job_id)
 		_set_pack_env(launch_job_ptr, launch_msg_ptr);
 

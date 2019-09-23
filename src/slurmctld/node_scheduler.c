@@ -635,6 +635,13 @@ extern void deallocate_nodes(struct job_record *job_ptr, bool timeout,
 		xfree(agent_args);
 		return;
 	}
+#ifdef SLURM_SIMULATOR
+	/* in simulation we do not spawn thread, just would mimic the time some time... */
+	slurm_free_kill_job_msg(kill_job);
+	hostlist_destroy(agent_args->hostlist);
+	xfree(agent_args);
+	return;
+#endif
 
 	agent_args->msg_args = kill_job;
 	agent_queue_request(agent_args);
