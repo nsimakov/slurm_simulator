@@ -3816,6 +3816,7 @@ static bool _job_pack_deadlock_test(struct job_record *job_ptr)
  * return 1 if backfill was executed 0 if not*/
 extern int sim_backfill_agent(void)
 {
+#ifdef SLURM_SIMULATOR123
 	uint64_t now=get_sim_utime();
 	double wait_time;
 	/* Read config and partitions; Write jobs and nodes */
@@ -3876,5 +3877,7 @@ extern int sim_backfill_agent(void)
 		}
 	}
 	return run_backfill;
+#endif
+    return 0;
 }
 #endif

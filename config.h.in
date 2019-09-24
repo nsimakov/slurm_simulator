@@ -530,7 +530,7 @@
 /* Define Slurm installation prefix */
 #undef SLURM_PREFIX
 
-/* Define if building in simulator mode. */
+/* Define SLURM_SIMULATOR if you are building slurm in simulator mode. */
 #undef SLURM_SIMULATOR
 
 /* Slurm Version Number */

@@ -1209,45 +1209,6 @@ static int _decay_apply_new_usage_and_weighted_factors(
 
 static void *_decay_thread(void *no_data)
 {
-#ifdef SLURM_SIMULATOR
-	//in the simulator mode we execute it from simulator loop
-	static int  _decay_thread_initiated=0;
-	static time_t start_time = 0;
-	static time_t last_reset = 0, next_reset = 0;
-	static uint32_t calc_period = 0;
-	static double decay_hl = 0.0;
-	static uint16_t reset_period = 0;
-
-	static time_t now;
-	static double run_delta = 0.0, real_decay = 0.0;
-	static double elapsed;
-
-	/* Write lock on jobs, read lock on nodes and partitions */
-	static slurmctld_lock_t job_write_lock =
-		{ NO_LOCK, WRITE_LOCK, READ_LOCK, READ_LOCK, NO_LOCK };
-	static assoc_mgr_lock_t locks = { WRITE_LOCK, NO_LOCK, NO_LOCK, NO_LOCK,
-				   NO_LOCK, NO_LOCK, NO_LOCK };
-
-	start_time = time(NULL);
-
-	if(_decay_thread_initiated)goto _decay_thread_loop;
-
-	calc_period = slurm_get_priority_calc_period();
-	decay_hl = (double)slurm_get_priority_decay_hl();
-	reset_period = slurm_get_priority_reset_period();
-
-	if (decay_hl > 0)
-		decay_factor = 1 - (0.693 / decay_hl);
-
-	_read_last_decay_ran(&g_last_ran, &last_reset);
-	if (last_reset == 0)
-		last_reset = start_time;
-
-	_init_grp_used_cpu_run_secs(g_last_ran);
-
-	_decay_thread_initiated=1;
-	goto _decay_thread_loop;
-#else
 	time_t start_time = time(NULL);
 	time_t last_reset = 0, next_reset = 0;
 	uint32_t calc_period = slurm_get_priority_calc_period();
@@ -1270,7 +1231,7 @@ static void *_decay_thread(void *no_data)
 		error("%s: cannot set my name to %s %m", __func__, "decay");
 	}
 #endif
-#endif
+
 	/*
 	 * DECAY_FACTOR DESCRIPTION:
 	 *
@@ -1304,8 +1265,9 @@ static void *_decay_thread(void *no_data)
 	 *
 	 * This explain the following declaration.
 	 */
-
+//#ifdef SLURM_SIMULATOR
 	slurm_mutex_lock(&decay_init_mutex);
+//#endif
 
 	if (decay_hl > 0)
 		decay_factor = 1 - (0.693 / decay_hl);
@@ -1319,14 +1281,13 @@ static void *_decay_thread(void *no_data)
 	if (last_reset == 0)
 		last_reset = start_time;
 
+//#ifdef SLURM_SIMULATOR
 	slurm_cond_signal(&decay_init_cond);
 	slurm_mutex_unlock(&decay_init_mutex);
+//#endif
 
 	_init_grp_used_cpu_run_secs(g_last_ran);
 
-#ifdef SLURM_SIMULATOR
-_decay_thread_loop:
-#endif
 	while (!plugin_shutdown) {
 		now = start_time;
 
@@ -1447,21 +1408,13 @@ _decay_thread_loop:
 		abs.tv_sec += calc_period;
 
 #ifdef SLURM_SIMULATOR
-		// @todo check it significantly changed
-		now = time(NULL);
-		elapsed = difftime(now, start_time);
-		if (elapsed < calc_period) {
-			break;
-			sleep(calc_period - elapsed);
-			start_time = time(NULL);
-		} else
-			start_time = now;
-		/* repeat ;) */
-	}
-#else
+		// in the simulator mode we execute this function repeatedly
+		// from simulator loop, so simulator loop handles timedwait
+		slurm_mutex_unlock(&decay_lock);
+		break;
+#endif
 		slurm_cond_timedwait(&decay_cond, &decay_lock, &abs);
 		slurm_mutex_unlock(&decay_lock);
-#endif
 		start_time = time(NULL);
 		/* repeat ;) */
 	}
