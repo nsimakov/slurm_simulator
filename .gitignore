@@ -60,3 +60,9 @@ autom4te.cache
 /testsuite/expect/globals.*
 /testsuite/expect/*.log*
 TAGS
+# eclipse project
+/.autotools
+/.cproject
+/.project
+/.settings
+
