@@ -93,6 +93,7 @@ time_t time(time_t *t)
 
 unsigned int sleep (unsigned int seconds)
 {
+	return real_sleep(seconds);
 	int64_t sleep_till = get_sim_utime() + 1000000 * seconds;
 	while(get_sim_utime() <= sleep_till){
 		real_usleep(1000);
@@ -102,6 +103,7 @@ unsigned int sleep (unsigned int seconds)
 
 int usleep (useconds_t usec)
 {
+	return real_usleep(usec);
 	useconds_t real_usec = 100;
 	if (real_usec > usec) {
 		real_usec = usec;
@@ -115,6 +117,7 @@ int usleep (useconds_t usec)
 
 int nanosleep (const struct timespec *req, struct timespec *rem)
 {
+	return real_nanosleep(req, rem);
 	int64_t nanosec = req->tv_sec*1000000000+req->tv_nsec;
 	int64_t usec = nanosec/1000;
 	usleep(usec);
