@@ -76,7 +76,9 @@ slurmctld_SOURCES +=	\
 	../common/sim/sim_slurmctld_agent.c	\
 	../common/sim/sim_slurmd.c	\
 	../common/sim/sim_slurmd_req.c	\
-	../common/sim/sim_slurmd_get_mach_stat.c
+	../common/sim/sim_slurmd_get_mach_stat.c	\
+	../common/sim/sim_events.c	\
+	../common/sim/sim_sbatch.c ../sbatch/opt.c opt.h ../sbatch/xlate.c
 else
 slurmctld_SOURCES += controller.c agent.c
 endif
@@ -106,10 +108,11 @@ endif
 slurmctld_LDADD = $(depend_libs) $(LIB_SLURM) $(DL_LIBS) $(depend_ldadd)
 slurmctld_LDFLAGS = -export-dynamic $(CMD_LDFLAGS) $(depend_ldflags)
 
-if ENABLE_SIMULATOR
-slurmctld_LDFLAGS += -Wl,-wrap,agent_init -Wl,-wrap,fed_mgr_init -Wl,-wrap,pthread_create
-slurmctld_LDFLAGS += -Wl,-wrap,xsignal_block -Wl,-wrap,agent_queue_request
-endif
+# if ENABLE_SIMULATOR
+# slurmctld_LDFLAGS += -Wl,-wrap,agent_init -Wl,-wrap,fed_mgr_init
+# -Wl,-wrap,pthread_create
+# slurmctld_LDFLAGS += -Wl,-wrap,xsignal_block -Wl,-wrap,agent_queue_request
+# endif
 
 slurmctld_DEPENDENCIES = $(LIB_SLURM_BUILD) $(depend_libs)
 

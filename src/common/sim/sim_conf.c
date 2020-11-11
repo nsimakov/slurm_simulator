@@ -21,18 +21,13 @@
 
 #include "sim/sim.h"
 
+slurm_sim_conf_t *slurm_sim_conf = NULL;
 
-slurm_sim_conf_t *slurm_sim_conf=NULL;
-
-extern int sim_read_sim_conf(void)
-{
-	s_p_options_t options[] = {
-		{"TimeStart", S_P_UINT32},
-		{"TimeStop", S_P_UINT32},
-		{"SecondsBeforeFirstJob", S_P_UINT32},
-		{"ClockScaling", S_P_DOUBLE},
-		{"SharedMemoryName", S_P_STRING},
-		{NULL} };
+extern int sim_read_sim_conf(void) {
+	s_p_options_t options[] = { { "TimeStart", S_P_UINT32 }, { "TimeStop",
+			S_P_UINT32 }, { "SecondsBeforeFirstJob", S_P_UINT32 }, {
+			"ClockScaling", S_P_DOUBLE }, { "SharedMemoryName", S_P_STRING }, {
+			"EventsFile", S_P_STRING }, { NULL } };
 	s_p_hashtbl_t *tbl = NULL;
 	char *conf_path = NULL;
 	struct stat buf;
@@ -41,11 +36,12 @@ extern int sim_read_sim_conf(void)
 	if (slurm_sim_conf == NULL) {
 		slurm_sim_conf = xmalloc(sizeof(slurm_sim_conf_t));
 	}
-	slurm_sim_conf->time_start=978325200;
-	slurm_sim_conf->time_stop=0;
-	slurm_sim_conf->seconds_before_first_job=30;
+	slurm_sim_conf->time_start = 978325200;
+	slurm_sim_conf->time_stop = 0;
+	slurm_sim_conf->seconds_before_first_job = 30;
 
-	slurm_sim_conf->shared_memory_name=NULL;
+	slurm_sim_conf->shared_memory_name = NULL;
+	slurm_sim_conf->events_file = NULL;
 
 	/* Get the slurmdbd.conf path and validate the file */
 	conf_path = get_extra_conf_path("sim.conf");
@@ -56,17 +52,28 @@ extern int sim_read_sim_conf(void)
 
 		tbl = s_p_hashtbl_create(options);
 		if (s_p_parse_file(tbl, NULL, conf_path, false) == SLURM_ERROR) {
-			fatal("SIM: Could not open/read/parse sim.conf file %s",
-			      conf_path);
+			fatal("SIM: Could not open/read/parse sim.conf file %s", conf_path);
 		}
 
 		s_p_get_uint32(&slurm_sim_conf->time_start, "TimeStart", tbl);
 		s_p_get_uint32(&slurm_sim_conf->time_stop, "TimeStop", tbl);
-		s_p_get_uint32(&slurm_sim_conf->seconds_before_first_job, "SecondsBeforeFirstJob", tbl);
+		s_p_get_uint32(&slurm_sim_conf->seconds_before_first_job,
+				"SecondsBeforeFirstJob", tbl);
 		s_p_get_double(&slurm_sim_conf->clock_scaling, "ClockScaling", tbl);
 
-		if(!s_p_get_string(&slurm_sim_conf->shared_memory_name, "SharedMemoryName", tbl))
-			slurm_sim_conf->shared_memory_name=xstrdup("/slurm_sim.shm");
+		if (!s_p_get_string(&slurm_sim_conf->shared_memory_name,
+				"SharedMemoryName", tbl)) {
+			slurm_sim_conf->shared_memory_name = xstrdup("/slurm_sim.shm");
+		}
+
+		if (!s_p_get_string(&slurm_sim_conf->events_file, "EventsFile", tbl)) {
+			slurm_sim_conf->events_file = xstrdup("sim.events");
+		}
+
+		if (slurm_sim_conf->events_file[0] != '/') {
+			slurm_sim_conf->events_file = get_extra_conf_path(
+					slurm_sim_conf->events_file);
+		}
 
 		s_p_hashtbl_destroy(tbl);
 	}
@@ -75,22 +82,26 @@ extern int sim_read_sim_conf(void)
 
 	return SLURM_SUCCESS;
 }
-extern int sim_print_sim_conf(void)
-{
+
+extern int sim_print_sim_conf(void) {
 	info("Sim: Slurm simulator configuration:");
-	info("TimeStart=%u",slurm_sim_conf->time_start);
-	info("TimeStop=%u",slurm_sim_conf->time_stop);
-	if(slurm_sim_conf->time_stop==0)
+	info("TimeStart=%u", slurm_sim_conf->time_start);
+	info("TimeStop=%u", slurm_sim_conf->time_stop);
+	if (slurm_sim_conf->time_stop == 0)
 		info("    i.e. Slurm Simulator spins forever");
-	if(slurm_sim_conf->time_stop==1)
+	if (slurm_sim_conf->time_stop == 1)
 		info("    i.e. Slurm Simulator stops after last job is done.");
 
-	info("SecondsBeforeFirstJob=%u",slurm_sim_conf->seconds_before_first_job);
-	info("ClockScaling=%f",slurm_sim_conf->clock_scaling);
+	info("SecondsBeforeFirstJob=%u", slurm_sim_conf->seconds_before_first_job);
+	info("ClockScaling=%f", slurm_sim_conf->clock_scaling);
 
-	if(slurm_sim_conf->shared_memory_name!=NULL)
-		info("SharedMemoryName=%s",slurm_sim_conf->shared_memory_name);
+	if (slurm_sim_conf->shared_memory_name != NULL)
+		info("SharedMemoryName=%s", slurm_sim_conf->shared_memory_name);
 	else
 		info("SharedMemoryName=(null)");
+	if (slurm_sim_conf->events_file != NULL)
+		info("EventsFile=%s", slurm_sim_conf->events_file);
+	else
+		info("EventsFile=(null)");
 	return SLURM_SUCCESS;
 }

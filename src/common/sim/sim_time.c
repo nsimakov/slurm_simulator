@@ -52,8 +52,8 @@ int64_t get_sim_utime()
 	real_gettimeofday(&cur_real_time, NULL);
 
 	int64_t cur_real_utime = (int64_t) (cur_real_time.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_time.tv_usec);
-	int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
-	return cur_sim_time;
+	//int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
+	return cur_real_utime;
 }
 
 void set_sim_time(int64_t cur_sim_time, double scale)
