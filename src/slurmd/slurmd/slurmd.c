@@ -317,7 +317,9 @@ main (int argc, char **argv)
 	init_setproctitle(argc, argv);
 
 	xsignal(SIGTERM, slurmd_shutdown);
+#ifndef _DEBUG
 	xsignal(SIGINT,  slurmd_shutdown);
+#endif
 	xsignal(SIGHUP,  _hup_handler);
 	xsignal(SIGUSR2, _usr_handler);
 	xsignal_block(blocked_signals);

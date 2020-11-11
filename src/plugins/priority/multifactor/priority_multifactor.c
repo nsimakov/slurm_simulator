@@ -370,7 +370,7 @@ static int _write_last_decay_ran(time_t last_ran, time_t last_reset)
 	xfree(new_file);
 
 	unlock_state_files();
-	debug4("done writing time %ld", (long)last_ran);
+	// debug4("done writing time %ld", (long)last_ran);
 	free_buf(buffer);
 
 	return error_code;

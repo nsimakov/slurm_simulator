@@ -5485,6 +5485,8 @@ done:
 	_sync_messages_kill(req);
 
 	_epilog_complete(req->job_id, rc);
+
+	debug("rc %d", rc);
 }
 
 /* On a parallel job, every slurmd may send the EPILOG_COMPLETE

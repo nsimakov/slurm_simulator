@@ -12,12 +12,10 @@ AM_CPPFLAGS = -I$(top_srcdir)
 slurmctld_SOURCES =     \
 	acct_policy.c	\
 	acct_policy.h	\
-	agent.c  	\
 	agent.h		\
 	backup.c	\
 	burst_buffer.c	\
 	burst_buffer.h	\
-	controller.c 	\
 	fed_mgr.c 	\
 	fed_mgr.h 	\
 	front_end.c	\
@@ -72,13 +70,46 @@ slurmctld_SOURCES =     \
 	trigger_mgr.c	\
 	trigger_mgr.h
 
+if ENABLE_SIMULATOR
+slurmctld_SOURCES +=	\
+	../common/sim/sim_slurmctld.c	\
+	../common/sim/sim_slurmctld_agent.c	\
+	../common/sim/sim_slurmd.c	\
+	../common/sim/sim_slurmd_req.c	\
+	../common/sim/sim_slurmd_get_mach_stat.c
+else
+slurmctld_SOURCES += controller.c agent.c
+endif
 
 sbin_PROGRAMS = slurmctld
 
 depend_libs = $(top_builddir)/src/common/libdaemonize.la
+depend_ldadd =
+depend_ldflags = 
 
-slurmctld_LDADD = $(depend_libs) $(LIB_SLURM) $(DL_LIBS)
-slurmctld_LDFLAGS = -export-dynamic $(CMD_LDFLAGS)
+if ENABLE_SIMULATOR
+depend_libs += \
+	$(top_builddir)/src/bcast/libfile_bcast.la \
+	$(top_builddir)/src/slurmd/common/libslurmd_common.o $(top_builddir)/src/slurmd/common/libslurmd_reverse_tree_math.la
+depend_ldadd += $(NUMA_LIBS)
+# These 2 depend_* should look the same in ../slurmstepd/Makefile.am
+depend_ldadd += $(HWLOC_LIBS) $(PAM_LIBS) $(UTIL_LIBS)
+depend_ldflags += $(HWLOC_LDFLAGS)
+
+# This is needed to actually link to the libs that it doesn't use.
+depend_ldflags += -Wl,--no-as-needed
+# same function waitpid_timeout defined twice rename one
+slurmctld_CFLAGS = -Dwaitpid_timeout=slurmctld_waitpid_timeout
+
+endif
+
+slurmctld_LDADD = $(depend_libs) $(LIB_SLURM) $(DL_LIBS) $(depend_ldadd)
+slurmctld_LDFLAGS = -export-dynamic $(CMD_LDFLAGS) $(depend_ldflags)
+
+if ENABLE_SIMULATOR
+slurmctld_LDFLAGS += -Wl,-wrap,agent_init -Wl,-wrap,fed_mgr_init -Wl,-wrap,pthread_create
+slurmctld_LDFLAGS += -Wl,-wrap,xsignal_block -Wl,-wrap,agent_queue_request
+endif
 
 slurmctld_DEPENDENCIES = $(LIB_SLURM_BUILD) $(depend_libs)
 

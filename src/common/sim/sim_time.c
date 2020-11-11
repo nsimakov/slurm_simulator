@@ -88,7 +88,11 @@ int gettimeofday(struct timeval *tv, void *tz)
 time_t time(time_t *t)
 {
 	int64_t cur_sim_time =  get_sim_utime();
-	return cur_sim_time/1000000;
+	time_t ts = cur_sim_time / 1000000;
+	if (t != NULL) {
+		*t = ts;
+	}
+	return ts;
 }
 
 unsigned int sleep (unsigned int seconds)
