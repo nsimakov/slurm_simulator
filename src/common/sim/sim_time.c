@@ -22,10 +22,10 @@ extern double *sim_timeval_scale;
 
 /* Function Pointers */
 int (*real_gettimeofday)(struct timeval *,struct timezone *) = NULL;
-time_t (*real_time)(time_t *)                                = NULL;
-unsigned int (*real_sleep)(unsigned int seconds)              = NULL;
-int (*real_usleep)(useconds_t usec)                           = NULL;
-
+time_t (*real_time)(time_t *) = NULL;
+unsigned int (*real_sleep)(unsigned int seconds) = NULL;
+int (*real_usleep)(useconds_t usec) = NULL;
+int (*real_nanosleep)(const struct timespec *req, struct timespec *rem) = NULL;
 
 //static uint64_t ref_utime=0;
 //static uint64_t prev_sim_utime=0;
@@ -46,6 +46,16 @@ int (*real_usleep)(useconds_t usec)                           = NULL;
 //}
 //
 
+int64_t get_sim_utime()
+{
+	struct timeval cur_real_time;
+	real_gettimeofday(&cur_real_time, NULL);
+
+	int64_t cur_real_utime = (int64_t) (cur_real_time.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_time.tv_usec);
+	int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
+	return cur_sim_time;
+}
+
 void set_sim_time(int64_t cur_sim_time, double scale)
 {
 	struct timeval cur_real_time;
@@ -60,14 +70,11 @@ void set_sim_time(int64_t cur_sim_time, double scale)
 			(int64_t)(*sim_timeval_scale * (cur_real_utime - cur_sim_time));
 }
 
-int64_t get_sim_utime()
+void set_sim_time_scale(double scale)
 {
-	struct timeval cur_real_time;
-	real_gettimeofday(&cur_real_time, NULL);
-
-	int64_t cur_real_utime = (int64_t) (cur_real_time.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_time.tv_usec);
-	int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
-	return cur_sim_time;
+	if (scale != *sim_timeval_scale) {
+		set_sim_time(get_sim_utime(), scale);
+	}
 }
 
 int gettimeofday(struct timeval *tv, void *tz)
@@ -82,6 +89,40 @@ time_t time(time_t *t)
 {
 	int64_t cur_sim_time =  get_sim_utime();
 	return cur_sim_time/1000000;
+}
+
+unsigned int sleep (unsigned int seconds)
+{
+	int64_t sleep_till = get_sim_utime() + 1000000 * seconds;
+	while(get_sim_utime() <= sleep_till){
+		real_usleep(1000);
+	}
+	return 0;
+}
+
+int usleep (useconds_t usec)
+{
+	useconds_t real_usec = 100;
+	if (real_usec > usec) {
+		real_usec = usec;
+	};
+	int64_t sleep_till = get_sim_utime() + usec;
+	while(get_sim_utime() <= sleep_till){
+		real_usleep(real_usec);
+	}
+	return 0;
+}
+
+int nanosleep (const struct timespec *req, struct timespec *rem)
+{
+	int64_t nanosec = req->tv_sec*1000000000+req->tv_nsec;
+	int64_t usec = nanosec/1000;
+	usleep(usec);
+	if(rem!=NULL) {
+		rem->tv_sec = 0;
+		rem->tv_nsec = 0;
+	}
+	return 0;
 }
 
 static void determine_libc()
@@ -137,6 +178,9 @@ static void set_pointers_to_time_func()
 	}
 	if (real_usleep == NULL) {
 		real_usleep = get_libc_func("usleep");
+	}
+	if (real_nanosleep == NULL) {
+		real_nanosleep = get_libc_func("nanosleep");
 	}
 }
 
