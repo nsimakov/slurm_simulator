@@ -39,4 +39,5 @@ EXTRA_DIST = \
     x_ac_slurm_ssl.m4 \
     x_ac_systemd.m4 \
     x_ac_uid_gid_size.m4 \
-    x_ac_yaml.m4
+    x_ac_yaml.m4 \
+    x_ac_simulator.m4

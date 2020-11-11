@@ -639,6 +639,8 @@ LIBCURL
 LIBCURL_CPPFLAGS
 _libcurl_config
 UTIL_LIBS
+ENABLE_SIMULATOR_FALSE
+ENABLE_SIMULATOR_TRUE
 WITH_MUNGE_FALSE
 WITH_MUNGE_TRUE
 MUNGE_DIR
@@ -1023,6 +1025,7 @@ with_netloc
 with_readline
 with_munge
 enable_multiple_slurmd
+enable_simulator
 with_libcurl
 enable_deprecated
 '
@@ -1725,6 +1728,7 @@ Optional Features:
   --disable-slurmrestd    disable slurmrestd support
   --enable-multiple-slurmd
                           enable multiple-slurmd support
+  --enable-simulator      build slurm in simulator mode
   --enable-deprecated     enable deprecated
 
 Optional Packages:
@@ -7837,7 +7841,7 @@ esac
 fi
 
 : ${AR=ar}
-: ${AR_FLAGS=cru}
+: ${AR_FLAGS=cr}
 
 
 
@@ -9558,8 +9562,8 @@ int forced_loaded() { return 2;}
 _LT_EOF
       echo "$LTCC $LTCFLAGS -c -o conftest.o conftest.c" >&5
       $LTCC $LTCFLAGS -c -o conftest.o conftest.c 2>&5
-      echo "$AR cru libconftest.a conftest.o" >&5
-      $AR cru libconftest.a conftest.o 2>&5
+      echo "$AR cr libconftest.a conftest.o" >&5
+      $AR cr libconftest.a conftest.o 2>&5
       echo "$RANLIB libconftest.a" >&5
       $RANLIB libconftest.a 2>&5
       cat > conftest.c << _LT_EOF
@@ -22241,8 +22245,8 @@ $as_echo "#define WITH_CGROUP 1" >>confdefs.h
 
 
 pkg_failed=no
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for check >= 0.9.8" >&5
-$as_echo_n "checking for check >= 0.9.8... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for CHECK" >&5
+$as_echo_n "checking for CHECK... " >&6; }
 
 if test -n "$CHECK_CFLAGS"; then
     pkg_cv_CHECK_CFLAGS="$CHECK_CFLAGS"
@@ -22282,7 +22286,7 @@ fi
 
 
 if test $pkg_failed = yes; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
@@ -22300,7 +22304,7 @@ fi
 
 	ac_have_check="no"
 elif test $pkg_failed = untried; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 	ac_have_check="no"
 else
@@ -22496,8 +22500,8 @@ fi
 
 
 pkg_failed=no
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $pkg_config_args" >&5
-$as_echo_n "checking for $pkg_config_args... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for GLIB" >&5
+$as_echo_n "checking for GLIB... " >&6; }
 
 if test -n "$GLIB_CFLAGS"; then
     pkg_cv_GLIB_CFLAGS="$GLIB_CFLAGS"
@@ -22537,7 +22541,7 @@ fi
 
 
 if test $pkg_failed = yes; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
@@ -22555,7 +22559,7 @@ fi
 
 	:
 elif test $pkg_failed = untried; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 	:
 else
@@ -22720,7 +22724,7 @@ main (void)
              glib_major_version, glib_minor_version, glib_micro_version);
       printf ("*** was found! If pkg-config was correct, then it is best\n");
       printf ("*** to remove the old version of GLib. You may also be able to fix the error\n");
-      printf("*** by modifying your LD_LIBRARY_PATH environment variable, or by editing\n");
+      printf("*** by modifying your LD_LIBRARY_PATH enviroment variable, or by editing\n");
       printf("*** /etc/ld.so.conf. Make sure you have run ldconfig if that is\n");
       printf("*** required on your system.\n");
       printf("*** If pkg-config was wrong, set the environment variable PKG_CONFIG_PATH\n");
@@ -22730,7 +22734,7 @@ main (void)
 	   (glib_minor_version != GLIB_MINOR_VERSION) ||
            (glib_micro_version != GLIB_MICRO_VERSION))
     {
-      printf("*** GLib header files (version %d.%d.%d) do not match\n",
+      printf("*** GLIB header files (version %d.%d.%d) do not match\n",
 	     GLIB_MAJOR_VERSION, GLIB_MINOR_VERSION, GLIB_MICRO_VERSION);
       printf("*** library (version %d.%d.%d)\n",
 	     glib_major_version, glib_minor_version, glib_micro_version);
@@ -22745,18 +22749,18 @@ main (void)
        }
      else
       {
-        printf("\n*** An old version of GLib (%u.%u.%u) was found.\n",
+        printf("\n*** An old version of GLIB (%u.%u.%u) was found.\n",
                glib_major_version, glib_minor_version, glib_micro_version);
-        printf("*** You need a version of GLib newer than %u.%u.%u. The latest version of\n",
+        printf("*** You need a version of GLIB newer than %u.%u.%u. The latest version of\n",
 	       major, minor, micro);
-        printf("*** GLib is always available from ftp://ftp.gtk.org.\n");
+        printf("*** GLIB is always available from ftp://ftp.gtk.org.\n");
         printf("***\n");
         printf("*** If you have already installed a sufficiently new version, this error\n");
         printf("*** probably means that the wrong copy of the pkg-config shell script is\n");
         printf("*** being found. The easiest way to fix this is to remove the old version\n");
-        printf("*** of GLib, but you can also set the PKG_CONFIG environment to point to the\n");
+        printf("*** of GLIB, but you can also set the PKG_CONFIG environment to point to the\n");
         printf("*** correct copy of pkg-config. (In this case, you will have to\n");
-        printf("*** modify your LD_LIBRARY_PATH environment variable, or edit /etc/ld.so.conf\n");
+        printf("*** modify your LD_LIBRARY_PATH enviroment variable, or edit /etc/ld.so.conf\n");
         printf("*** so that the correct libraries are found at run-time))\n");
       }
     }
@@ -22791,7 +22795,7 @@ $as_echo "no" >&6; }
        if test -f conf.glibtest ; then
         :
        else
-          echo "*** Could not run GLib test program, checking why..."
+          echo "*** Could not run GLIB test program, checking why..."
           ac_save_CFLAGS="$CFLAGS"
           ac_save_LIBS="$LIBS"
           CFLAGS="$CFLAGS $GLIB_CFLAGS"
@@ -22812,8 +22816,8 @@ main ()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
    echo "*** The test program compiled, but did not run. This usually means"
-          echo "*** that the run-time linker is not finding GLib or finding the wrong"
-          echo "*** version of GLib. If it is not finding GLib, you'll need to set your"
+          echo "*** that the run-time linker is not finding GLIB or finding the wrong"
+          echo "*** version of GLIB. If it is not finding GLIB, you'll need to set your"
           echo "*** LD_LIBRARY_PATH environment variable, or edit /etc/ld.so.conf to point"
           echo "*** to the installed location  Also, make sure you have run ldconfig if that"
           echo "*** is required on your system"
@@ -22822,7 +22826,7 @@ if ac_fn_c_try_link "$LINENO"; then :
           echo "*** you may also be able to get things to work by modifying LD_LIBRARY_PATH"
 else
    echo "*** The test program failed to compile or link. See the file config.log for the"
-          echo "*** exact error that occurred. This usually means GLib is incorrectly installed."
+          echo "*** exact error that occured. This usually means GLIB is incorrectly installed."
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -24133,8 +24137,8 @@ fi
 fi
 
 pkg_failed=no
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${x_ac_lua_pkg_name}" >&5
-$as_echo_n "checking for ${x_ac_lua_pkg_name}... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for lua" >&5
+$as_echo_n "checking for lua... " >&6; }
 
 if test -n "$lua_CFLAGS"; then
     pkg_cv_lua_CFLAGS="$lua_CFLAGS"
@@ -24174,7 +24178,7 @@ fi
 
 
 if test $pkg_failed = yes; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
 if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
@@ -24192,7 +24196,7 @@ fi
 
 	x_ac_have_lua="no"
 elif test $pkg_failed = untried; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 	x_ac_have_lua="no"
 else
@@ -24600,6 +24604,44 @@ else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 fi
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether or not simulator mode is enabled" >&5
+$as_echo_n "checking whether or not simulator mode is enabled... " >&6; }
+  # Check whether --enable-simulator was given.
+if test "${enable_simulator+set}" = set; then :
+  enableval=$enable_simulator;  case "$enableval" in
+        yes) x_ac_simulator=yes ;;
+         no) x_ac_simulator=no ;;
+          *) { $as_echo "$as_me:${as_lineno-$LINENO}: result: doh!" >&5
+$as_echo "doh!" >&6; }
+             as_fn_error $? "bad value \"$enableval\" for --enable-simulator" "$LINENO" 5 ;;
+      esac
+
+
+fi
+
+  if test "$x_ac_simulator" = yes; then
+    test "$GCC" = yes && CFLAGS="$CFLAGS -DSLURM_SIMULATOR"
+    test "$GXX" = yes && CXXFLAGS="$CXXFLAGS -DSLURM_SIMULATOR"
+    LIBS="$LIBS -lrt -lm"
+
+$as_echo "#define SLURM_SIMULATOR 1" >>confdefs.h
+
+  fi
+   if test "$x_ac_simulator" = "yes"; then
+  ENABLE_SIMULATOR_TRUE=
+  ENABLE_SIMULATOR_FALSE='#'
+else
+  ENABLE_SIMULATOR_TRUE='#'
+  ENABLE_SIMULATOR_FALSE=
+fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: ${x_ac_simulator=no}" >&5
+$as_echo "${x_ac_simulator=no}" >&6; }
+
+
+
 
 savedLIBS="$LIBS"
 LIBS="-lutil $LIBS"
@@ -25391,6 +25433,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${WITH_MUNGE_TRUE}" && test -z "${WITH_MUNGE_FALSE}"; then
   as_fn_error $? "conditional \"WITH_MUNGE\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${ENABLE_SIMULATOR_TRUE}" && test -z "${ENABLE_SIMULATOR_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_SIMULATOR\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${WITH_CURL_TRUE}" && test -z "${WITH_CURL_FALSE}"; then
@@ -27281,9 +27327,7 @@ $as_echo X/"$am_mf" |
     { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "Something went wrong bootstrapping makefile fragments
-    for automatic dependency tracking.  If GNU make was not used, consider
-    re-running the configure script with MAKE=\"gmake\" (or whatever is
-    necessary).  You can also try re-running configure with the
+    for automatic dependency tracking.  Try re-running configure with the
     '--disable-dependency-tracking' option to at least be able to build
     the package (albeit without support for automatic dependency tracking).
 See \`config.log' for more details" "$LINENO" 5; }

@@ -357,6 +357,11 @@ else
   AC_MSG_RESULT([no])
 fi
 
+dnl
+dnl Check if slurm compiled in simulation mode:
+dnl
+X_AC_SIMULATOR
+
 savedLIBS="$LIBS"
 LIBS="-lutil $LIBS"
 AC_CHECK_LIB(util, openpty, [UTIL_LIBS="-lutil"], [])

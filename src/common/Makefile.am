@@ -136,6 +136,10 @@ libcommon_la_SOURCES = 			\
 	tres_bind.c tres_bind.h		\
 	tres_frequency.c tres_frequency.h
 
+if ENABLE_SIMULATOR
+libcommon_la_SOURCES += sim/sim.c
+endif
+
 EXTRA_libcommon_la_SOURCES = 		\
 	uthash/LICENSE			\
 	uthash/README			\
