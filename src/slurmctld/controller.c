@@ -784,7 +784,13 @@ int main(int argc, char **argv)
 		/*
 		 * process slurm background activities, could run as pthread
 		 */
+#ifndef SLURM_SIMULATOR
 		_slurmctld_background(NULL);
+#else
+		if(sim_slurmctld_background(NULL) != NULL){
+			_slurmctld_background(NULL);
+		}
+#endif
 
 		/* termination of controller */
 		switch_g_save(slurmctld_conf.state_save_location);

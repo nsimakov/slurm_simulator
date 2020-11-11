@@ -1704,6 +1704,12 @@ static void _agent_retry(int min_wait, bool mail_too)
  */
 void agent_queue_request(agent_arg_t *agent_arg_ptr)
 {
+#ifdef SLURM_SIMULATOR
+	// skip the rest if sim_agent_queue_request handles request
+	if(sim_agent_queue_request(agent_arg_ptr) > 0) {
+		return;
+	}
+#endif
 	queued_request_t *queued_req_ptr = NULL;
 
 	if ((AGENT_THREAD_COUNT + 2) >= MAX_SERVER_THREADS)

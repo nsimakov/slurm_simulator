@@ -40,7 +40,7 @@ extern int __wrap_pthread_create (pthread_t *newthread,
 		debug("Sim: thread_id_sig ... skip.");
 		return 0;
 	} else if (&slurmctld_config.thread_id_save) {
-		debug("Sim: thread_id_save ... skip.");
+		debug("Sim: thread_id_save ... ");
 		//return 0;
 	} else if (&slurmctld_config.thread_id_power) {
 		debug("Sim: thread_id_power ... skip.");
@@ -59,8 +59,6 @@ int __wrap_xsignal_block(int sigarray[]){
 }
 
 extern int sim_init_slurmd(int argc, char **argv);
-extern void sim_init_events();
-extern void sim_print_events();
 
 extern int sim_registration_engine();
 extern int sbatch_main(int argc, char **argv);
@@ -71,7 +69,7 @@ main (int argc, char **argv)
 {
 	daemonize = 0;
 
-	//sim_init_slurmd(argc, argv);
+	sim_init_slurmd(argc, argv);
 	sim_init_events();
 	sim_print_events();
 
@@ -111,11 +109,11 @@ extern void *sim_slurmctld_background(void *no_data)
 	int no_resp_msg_interval, ping_interval, purge_job_interval;
 	int i;
 	uint32_t job_limit;
-	/* SIM Start */
+#ifdef SLURM_SIMULATOR
 	//time_t start_time;
 	//int jobs_submit_count=0;
-	//sim_event_t * event = NULL;
-	/* SIM End */
+	sim_event_t * event = NULL;
+#endif
 	DEF_TIMERS;
 
 	/* Locks: Read config */
@@ -162,9 +160,9 @@ extern void *sim_slurmctld_background(void *no_data)
 	last_uid_update = last_reboot_msg_time = now;
 	last_acct_gather_node_time = last_ext_sensors_time = now;
 
-	/* SIM Start */
+#ifdef SLURM_SIMULATOR
 	//start_time = now;
-	/* SIM End */
+#endif
 
 	last_ping_srun_time = now;
 	last_node_acct = now;
@@ -483,23 +481,33 @@ extern void *sim_slurmctld_background(void *no_data)
 			last_uid_update = now;
 			assoc_mgr_set_missing_uids();
 		}
+#ifdef SLURM_SIMULATOR
 		/* SIM Start */
-		/*if(difftime((time_t)sim_next_event->when/1000000, now) < 0) {
+		if(difftime((time_t)sim_next_event->when/1000000, now) < 0) {
 			while(difftime((time_t)sim_next_event->when/1000000, now) < 0) {
 				event = sim_next_event;
 				pthread_mutex_lock(&events_mutex);
 				sim_next_event = sim_next_event->next;
 				pthread_mutex_unlock(&events_mutex);
 
-				if(event->type == SIM_SUBMIT_BATCH_JOB) {
-					submit_job((sim_event_submit_batch_job_t*)event->payload);
-				}
+				sim_print_event(event);
 
+				switch(event->type) {
+				case SIM_NODE_REGISTRATION:
+					sim_registration_engine();
+					break;
+				case SIM_SUBMIT_BATCH_JOB:
+					submit_job((sim_event_submit_batch_job_t*)event->payload);
+					break;
+				default:
+					break;
+				}
 			}
 			//
 			//jobs_submit_count++;
-		}*/
+		}
 		/* SIM End */
+#endif
 
 		END_TIMER2("_slurmctld_background");
 	}

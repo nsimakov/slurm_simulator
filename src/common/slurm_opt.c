@@ -1713,10 +1713,12 @@ static slurm_cli_opt_t slurm_opt_get_user_env = {
 
 static int arg_set_gid(slurm_opt_t *opt, const char *arg)
 {
+#ifndef SLURM_SIMULATOR
 	if (getuid() != 0) {
 		error("--gid only permitted by root user");
 		exit(-1);
 	}
+#endif
 
 	if (gid_from_string(arg, &opt->gid) < 0) {
 		error("Invalid --gid specification");
@@ -4366,10 +4368,12 @@ static slurm_cli_opt_t slurm_opt_tmp = {
 
 static int arg_set_uid(slurm_opt_t *opt, const char *arg)
 {
+#ifndef SLURM_SIMULATOR
 	if (getuid() != 0) {
 		error("--uid only permitted by root user");
 		exit(-1);
 	}
+#endif
 
 	if (uid_from_string(arg, &opt->uid) < 0) {
 		error("Invalid --uid specification");

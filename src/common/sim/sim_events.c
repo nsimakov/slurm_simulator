@@ -55,31 +55,41 @@ void sim_insert_event(int64_t when, int type, void *payload)
 	sim_insert_event2(event);
 }
 
+extern void sim_print_event(sim_event_t * event)
+{
+	int i;
+	char *str=NULL;
+	sim_event_submit_batch_job_t *payload=NULL;
 
+	switch(event->type) {
+	case SIM_NODE_REGISTRATION:
+		info("%" PRId64 "\t SIM_NODE_REGISTRATION", event->when);
+		break;
+	case SIM_SUBMIT_BATCH_JOB:
+		payload = (sim_event_submit_batch_job_t*)event->payload;
+		for(i=0;i<payload->argc;++i) {
+			xstrcat(str, payload->argv[i]);
+			xstrcat(str, " ");
+		}
+		info("%" PRId64 "\tSIM_SUBMIT_BATCH_JOB --jid %d --sim-walltime %d %s",
+				event->when, payload->job_id, payload->walltime, str);
+		str[0]='\0';
+		break;
+	default:
+		info("%" PRId64 "\t%d", event->when, event->type);
+		break;
+	}
+	xfree(str);
+}
 extern void sim_print_events()
 {
 	info("Simulation Events:");
-	//info("Time EventType");
-	int i;
-	char *str=NULL;
 	sim_event_t * event=sim_first_event;
 	while(event != NULL) {
-		if(event->type==SIM_SUBMIT_BATCH_JOB){
-			sim_event_submit_batch_job_t *payload = (sim_event_submit_batch_job_t*)event->payload;
-			for(i=0;i<payload->argc;++i) {
-				xstrcat(str, payload->argv[i]);
-				xstrcat(str, " ");
-			}
-			info("%" PRId64 "\tSIM_SUBMIT_BATCH_JOB --jid %d --sim-walltime %d %s",
-					event->when, payload->job_id, payload->walltime, str);
-			str[0]='\0';
-		} else {
-			info("%" PRId64 "\t%d", event->when, event->type);
-		}
+		sim_print_event(event);
 		event = event->next;
 	}
 	info("End Simulation Events:");
-	xfree(str);
 }
 
 extern void split_cmd_line(const char * cmd_line, char ***argv, int *argc)

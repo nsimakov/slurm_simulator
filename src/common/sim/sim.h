@@ -58,6 +58,10 @@ typedef struct sim_event {
 extern sim_event_t * sim_next_event;
 void sim_insert_event(int64_t when, int type, void *payload);
 
+extern void sim_init_events();
+extern void sim_print_events();
+extern void sim_print_event(sim_event_t * event);
+
 extern pthread_mutex_t events_mutex;
 
 /******************************************************************************
