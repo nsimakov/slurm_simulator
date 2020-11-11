@@ -19,7 +19,7 @@
 #include "src/common/xstring.h"
 #include "src/common/slurmdb_defs.h"
 
-#include "sim/sim_funcs.h"
+#include "sim/sim.h"
 
 
 slurm_sim_conf_t *slurm_sim_conf=NULL;
