@@ -114,6 +114,7 @@ sbin_PROGRAMS = slurmctld$(EXEEXT)
 # This is needed to actually link to the libs that it doesn't use.
 @ENABLE_SIMULATOR_TRUE@am__append_5 = $(HWLOC_LDFLAGS) \
 @ENABLE_SIMULATOR_TRUE@	-Wl,--no-as-needed
+@ENABLE_SIMULATOR_TRUE@am__append_6 = -Wl,-wrap,pthread_create -Wl,-wrap,xsignal_block
 subdir = src/slurmctld
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/auxdir/ax_check_compile_flag.m4 \
@@ -627,13 +628,10 @@ depend_ldflags = $(am__append_5)
 # same function waitpid_timeout defined twice rename one
 @ENABLE_SIMULATOR_TRUE@slurmctld_CFLAGS = -Dwaitpid_timeout=slurmctld_waitpid_timeout
 slurmctld_LDADD = $(depend_libs) $(LIB_SLURM) $(DL_LIBS) $(depend_ldadd)
-slurmctld_LDFLAGS = -export-dynamic $(CMD_LDFLAGS) $(depend_ldflags)
-
-# if ENABLE_SIMULATOR
+slurmctld_LDFLAGS = -export-dynamic $(CMD_LDFLAGS) $(depend_ldflags) \
+	$(am__append_6)
 # slurmctld_LDFLAGS += -Wl,-wrap,agent_init -Wl,-wrap,fed_mgr_init
-# -Wl,-wrap,pthread_create
-# slurmctld_LDFLAGS += -Wl,-wrap,xsignal_block -Wl,-wrap,agent_queue_request
-# endif
+# slurmctld_LDFLAGS += 
 slurmctld_DEPENDENCIES = $(LIB_SLURM_BUILD) $(depend_libs)
 all: all-am
 

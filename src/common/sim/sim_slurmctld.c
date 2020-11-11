@@ -1,3 +1,5 @@
+extern void *sim_slurmctld_background(void *no_data);
+
 #define main slurmctld_main
 #include "src/slurmctld/controller.c"
 #undef main
@@ -22,7 +24,7 @@ extern int __wrap_fed_mgr_init(void *db_conn)
 	return SLURM_SUCCESS;
 }*/
 
-/*extern int __real_pthread_create (pthread_t *newthread,
+extern int __real_pthread_create (pthread_t *newthread,
 		const pthread_attr_t *attr,
 		void *(*start_routine) (void *),
 		void *arg);
@@ -36,26 +38,25 @@ extern int __wrap_pthread_create (pthread_t *newthread,
 		debug("Sim: thread_id_rpc.");
 	} else if (&slurmctld_config.thread_id_sig == newthread) {
 		debug("Sim: thread_id_sig ... skip.");
-		//_sim_slurmctld_background(NULL);
-		//return 0;
+		return 0;
 	} else if (&slurmctld_config.thread_id_save) {
 		debug("Sim: thread_id_save ... skip.");
 		//return 0;
 	} else if (&slurmctld_config.thread_id_power) {
 		debug("Sim: thread_id_power ... skip.");
-		//return 0;
+		return 0;
 	} else if (&slurmctld_config.thread_id_purge_files) {
 		debug("Sim: thread_id_purge_files ... skip.");
-		//return 0;
+		return 0;
 	}
 	return __real_pthread_create(newthread, attr, start_routine, arg);
-}*/
+}
 
 // in sim don;t block ctrl-c
-/*int __real_xsignal_block(int sigarray[]);
+int __real_xsignal_block(int sigarray[]);
 int __wrap_xsignal_block(int sigarray[]){
 	return 0;
-}*/
+}
 
 extern int sim_init_slurmd(int argc, char **argv);
 extern void sim_init_events();
