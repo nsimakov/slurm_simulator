@@ -77,7 +77,7 @@ slurmctld_SOURCES +=	\
 	../common/sim/sim_slurmd.c	\
 	../common/sim/sim_slurmd_req.c	\
 	../common/sim/sim_slurmd_get_mach_stat.c	\
-	../common/sim/sim_events.c	\
+	../common/sim/sim_events.c ../common/sim/sim_jobs.c	\
 	../common/sim/sim_sbatch.c ../sbatch/opt.c opt.h ../sbatch/xlate.c
 else
 slurmctld_SOURCES += controller.c agent.c

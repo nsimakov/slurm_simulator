@@ -98,7 +98,7 @@ target_triplet = @target@
 @ENABLE_SIMULATOR_TRUE@	../common/sim/sim_slurmd.c	\
 @ENABLE_SIMULATOR_TRUE@	../common/sim/sim_slurmd_req.c	\
 @ENABLE_SIMULATOR_TRUE@	../common/sim/sim_slurmd_get_mach_stat.c	\
-@ENABLE_SIMULATOR_TRUE@	../common/sim/sim_events.c	\
+@ENABLE_SIMULATOR_TRUE@	../common/sim/sim_events.c ../common/sim/sim_jobs.c	\
 @ENABLE_SIMULATOR_TRUE@	../common/sim/sim_sbatch.c ../sbatch/opt.c opt.h ../sbatch/xlate.c
 
 @ENABLE_SIMULATOR_FALSE@am__append_2 = controller.c agent.c
@@ -191,8 +191,9 @@ am__slurmctld_SOURCES_DIST = acct_policy.c acct_policy.h agent.h \
 	../common/sim/sim_slurmctld_agent.c ../common/sim/sim_slurmd.c \
 	../common/sim/sim_slurmd_req.c \
 	../common/sim/sim_slurmd_get_mach_stat.c \
-	../common/sim/sim_events.c ../common/sim/sim_sbatch.c \
-	../sbatch/opt.c opt.h ../sbatch/xlate.c controller.c agent.c
+	../common/sim/sim_events.c ../common/sim/sim_jobs.c \
+	../common/sim/sim_sbatch.c ../sbatch/opt.c opt.h \
+	../sbatch/xlate.c controller.c agent.c
 @ENABLE_SIMULATOR_TRUE@am__objects_1 =  \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-sim_slurmctld.$(OBJEXT) \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-sim_slurmctld_agent.$(OBJEXT) \
@@ -200,6 +201,7 @@ am__slurmctld_SOURCES_DIST = acct_policy.c acct_policy.h agent.h \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-sim_slurmd_req.$(OBJEXT) \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-sim_slurmd_get_mach_stat.$(OBJEXT) \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-sim_events.$(OBJEXT) \
+@ENABLE_SIMULATOR_TRUE@	slurmctld-sim_jobs.$(OBJEXT) \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-sim_sbatch.$(OBJEXT) \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-opt.$(OBJEXT) \
 @ENABLE_SIMULATOR_TRUE@	slurmctld-xlate.$(OBJEXT)
@@ -285,6 +287,7 @@ am__depfiles_remade = ./$(DEPDIR)/slurmctld-acct_policy.Po \
 	./$(DEPDIR)/slurmctld-reservation.Po \
 	./$(DEPDIR)/slurmctld-sched_plugin.Po \
 	./$(DEPDIR)/slurmctld-sim_events.Po \
+	./$(DEPDIR)/slurmctld-sim_jobs.Po \
 	./$(DEPDIR)/slurmctld-sim_sbatch.Po \
 	./$(DEPDIR)/slurmctld-sim_slurmctld.Po \
 	./$(DEPDIR)/slurmctld-sim_slurmctld_agent.Po \
@@ -756,6 +759,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-reservation.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-sched_plugin.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-sim_events.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-sim_jobs.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-sim_sbatch.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-sim_slurmctld.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurmctld-sim_slurmctld_agent.Po@am__quote@ # am--include-marker
@@ -1329,6 +1333,20 @@ slurmctld-sim_events.obj: ../common/sim/sim_events.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-sim_events.obj `if test -f '../common/sim/sim_events.c'; then $(CYGPATH_W) '../common/sim/sim_events.c'; else $(CYGPATH_W) '$(srcdir)/../common/sim/sim_events.c'; fi`
 
+slurmctld-sim_jobs.o: ../common/sim/sim_jobs.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-sim_jobs.o -MD -MP -MF $(DEPDIR)/slurmctld-sim_jobs.Tpo -c -o slurmctld-sim_jobs.o `test -f '../common/sim/sim_jobs.c' || echo '$(srcdir)/'`../common/sim/sim_jobs.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-sim_jobs.Tpo $(DEPDIR)/slurmctld-sim_jobs.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../common/sim/sim_jobs.c' object='slurmctld-sim_jobs.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-sim_jobs.o `test -f '../common/sim/sim_jobs.c' || echo '$(srcdir)/'`../common/sim/sim_jobs.c
+
+slurmctld-sim_jobs.obj: ../common/sim/sim_jobs.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-sim_jobs.obj -MD -MP -MF $(DEPDIR)/slurmctld-sim_jobs.Tpo -c -o slurmctld-sim_jobs.obj `if test -f '../common/sim/sim_jobs.c'; then $(CYGPATH_W) '../common/sim/sim_jobs.c'; else $(CYGPATH_W) '$(srcdir)/../common/sim/sim_jobs.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-sim_jobs.Tpo $(DEPDIR)/slurmctld-sim_jobs.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../common/sim/sim_jobs.c' object='slurmctld-sim_jobs.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -c -o slurmctld-sim_jobs.obj `if test -f '../common/sim/sim_jobs.c'; then $(CYGPATH_W) '../common/sim/sim_jobs.c'; else $(CYGPATH_W) '$(srcdir)/../common/sim/sim_jobs.c'; fi`
+
 slurmctld-sim_sbatch.o: ../common/sim/sim_sbatch.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(slurmctld_CFLAGS) $(CFLAGS) -MT slurmctld-sim_sbatch.o -MD -MP -MF $(DEPDIR)/slurmctld-sim_sbatch.Tpo -c -o slurmctld-sim_sbatch.o `test -f '../common/sim/sim_sbatch.c' || echo '$(srcdir)/'`../common/sim/sim_sbatch.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/slurmctld-sim_sbatch.Tpo $(DEPDIR)/slurmctld-sim_sbatch.Po
@@ -1564,6 +1582,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/slurmctld-reservation.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sched_plugin.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sim_events.Po
+	-rm -f ./$(DEPDIR)/slurmctld-sim_jobs.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sim_sbatch.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sim_slurmctld.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sim_slurmctld_agent.Po
@@ -1652,6 +1671,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/slurmctld-reservation.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sched_plugin.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sim_events.Po
+	-rm -f ./$(DEPDIR)/slurmctld-sim_jobs.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sim_sbatch.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sim_slurmctld.Po
 	-rm -f ./$(DEPDIR)/slurmctld-sim_slurmctld_agent.Po

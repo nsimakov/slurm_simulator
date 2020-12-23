@@ -302,3 +302,23 @@ void sim_init_events()
 	}
 	fclose(f_in);
 }
+
+void sim_insert_event_comp_job(uint32_t job_id)
+{
+	sim_job_t *active_job = sim_find_active_sim_job(job_id);
+	if(active_job==NULL) {
+		error("Sim: Can not find job %d among active sim jobs!", job_id);
+		return;
+	}
+	int64_t when;
+	if(active_job->start_time == 0){
+		pthread_mutex_lock(&active_job_mutex);
+		active_job->start_time = get_sim_utime();
+		pthread_mutex_unlock(&active_job_mutex);
+	}
+
+	if(active_job->walltime != INT32_MAX){
+		when = active_job->start_time + active_job->walltime * 1000000;
+		sim_insert_event(when, SIM_COMPLETE_BATCH_SCRIPT, (void*)active_job);
+	}
+}

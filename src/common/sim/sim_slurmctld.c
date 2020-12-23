@@ -79,6 +79,35 @@ main (int argc, char **argv)
 }
 
 
+extern void complete_job(uint32_t job_id)
+{
+	//char *hostname;
+	job_record_t *job_ptr = find_job_record(job_id);
+	if(job_ptr==NULL){
+		error("Can not find record for %d job!", job_id);
+		sim_remove_active_sim_job(job_id);
+		return;
+	}
+	/*if(IS_JOB_COMPLETING(job_ptr)){
+		job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
+		sim_remove_active_sim_job(job_id);
+		return;
+	}
+	if(!IS_JOB_RUNNING(job_ptr)){
+		error("Can not stop %d job, it is not running (%s (%d))!",
+				job_id, job_state_string(job_ptr->job_state), job_ptr->job_state);
+		sim_remove_active_sim_job(job_id);
+		return;
+	}*/
+	//hostname = hostlist_shift(job_ptr->nodes);
+	// REQUEST_COMPLETE_BATCH_SCRIPT
+	job_complete(job_ptr->job_id, job_ptr->user_id, false, false, SLURM_SUCCESS);
+	// MESSAGE_EPILOG_COMPLETE
+	job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
+	//free(hostname);
+	sim_remove_active_sim_job(job_id);
+}
+
 /*
  * _sim_slurmctld_background - process slurmctld background activities
  *	purge defunct job records, save state, schedule jobs, and
@@ -498,6 +527,10 @@ extern void *sim_slurmctld_background(void *no_data)
 					break;
 				case SIM_SUBMIT_BATCH_JOB:
 					submit_job((sim_event_submit_batch_job_t*)event->payload);
+					break;
+				case SIM_COMPLETE_BATCH_SCRIPT:
+					debug2("Job %d reached its walltime", ((sim_job_t*)event->payload)->job_id);
+					//complete_job(((sim_job_t*)event->payload)->job_id);
 					break;
 				default:
 					break;

@@ -41,8 +41,8 @@ typedef enum {
 } sim_event_type_t;
 
 typedef struct sim_event_submit_batch_job {
-	int walltime; /**/
-	uint32_t job_id;
+	int walltime; /*actual walltime*/
+	uint32_t job_id;	/* job ID */
 	char **argv;
 	int argc;
 } sim_event_submit_batch_job_t;
@@ -56,32 +56,41 @@ typedef struct sim_event {
 } sim_event_t;
 
 extern sim_event_t * sim_next_event;
-void sim_insert_event(int64_t when, int type, void *payload);
 
 extern void sim_init_events();
 extern void sim_print_events();
 extern void sim_print_event(sim_event_t * event);
+
+extern void sim_insert_event(int64_t when, int type, void *payload);
+extern void sim_insert_event_comp_job(uint32_t job_id);
 
 extern pthread_mutex_t events_mutex;
 
 /******************************************************************************
  * Active Simulated Jobs
  ******************************************************************************/
-
+/* sim_job contain information needed during job being in queue or running */
 typedef struct sim_job sim_job_t;
-
-struct sim_job {
+typedef struct sim_job {
 	int walltime; /*job duration, INT32_MAX or any large value would results in job running till time limit*/
-	uint32_t job_id;
-	int64_t submit_time; /* time of event in usec*/
-	char **job_argv;
-	int job_argc;
+	uint32_t job_id;	/* job ID */
+	int64_t submit_time; /* submit_time in usec*/
+	int64_t start_time; /* start_time in usec*/
 
-	sim_job_t *sim_job_next;
-	sim_job_t *sim_job_previous;
-};
+	sim_job_t *next_sim_job;
+	sim_job_t *previous_sim_job;
+} sim_job_t;
 
-extern void insert_sim_job(uint32_t job_id);
-extern sim_job_t *find_sim_job(uint32_t job_id);
+extern pthread_mutex_t active_job_mutex;
+
+extern void sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit_batch_job);
+extern int sim_remove_active_sim_job(uint32_t job_id);
+extern sim_job_t *sim_find_active_sim_job(uint32_t job_id);
+extern void sim_print_active_jobs();
+
+/******************************************************************************
+ * Simulated Time
+ ******************************************************************************/
+extern int64_t get_sim_utime();
 
 #endif

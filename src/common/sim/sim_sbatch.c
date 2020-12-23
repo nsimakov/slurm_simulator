@@ -69,5 +69,21 @@ extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job)
 	slurm_submit_batch_job(desc, &resp);
 	//sbatch_main(sbatch_argc, sbatch_argv);
 	//desc = xmalloc(sizeof(job_desc_msg_t));
+
+	if(resp != NULL) {
+		// insert job to active simulated job list
+		if(event_submit_batch_job->job_id==0) {
+			pthread_mutex_lock(&events_mutex);
+			event_submit_batch_job->job_id = resp->job_id;
+			pthread_mutex_unlock(&events_mutex);
+		}
+		if(event_submit_batch_job->job_id != resp->job_id) {
+			error("Job id in event list (%d) does not match to one returned from sbatch (%d)",
+					event_submit_batch_job->job_id, resp->job_id);
+		}
+		sim_insert_sim_active_job(event_submit_batch_job);
+	} else {
+		error("Job was not submitted!");
+	}
 }
 
