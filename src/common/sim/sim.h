@@ -15,6 +15,7 @@ typedef struct slurm_sim_conf {
 	 * different if multiple simulation is running at same time */
 	char *      shared_memory_name;
 	char *      events_file;
+	long    time_after_all_events_done;
 } slurm_sim_conf_t;
 
 /* simulator configuration */

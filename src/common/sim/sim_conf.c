@@ -24,10 +24,15 @@
 slurm_sim_conf_t *slurm_sim_conf = NULL;
 
 extern int sim_read_sim_conf(void) {
-	s_p_options_t options[] = { { "TimeStart", S_P_UINT32 }, { "TimeStop",
-			S_P_UINT32 }, { "SecondsBeforeFirstJob", S_P_UINT32 }, {
-			"ClockScaling", S_P_DOUBLE }, { "SharedMemoryName", S_P_STRING }, {
-			"EventsFile", S_P_STRING }, { NULL } };
+	s_p_options_t options[] = {
+			{"TimeStart", S_P_UINT32 },
+			{"TimeStop", S_P_UINT32 },
+			{"SecondsBeforeFirstJob", S_P_UINT32 },
+			{"ClockScaling", S_P_DOUBLE },
+			{"SharedMemoryName", S_P_STRING },
+			{"EventsFile", S_P_STRING },
+			{"TimeAfterAllEventsDone", S_P_LONG },
+			{ NULL } };
 	s_p_hashtbl_t *tbl = NULL;
 	char *conf_path = NULL;
 	struct stat buf;
@@ -75,6 +80,8 @@ extern int sim_read_sim_conf(void) {
 					slurm_sim_conf->events_file);
 		}
 
+		s_p_get_long(&slurm_sim_conf->time_after_all_events_done, "TimeAfterAllEventsDone", tbl);
+
 		s_p_hashtbl_destroy(tbl);
 	}
 
@@ -103,5 +110,7 @@ extern int sim_print_sim_conf(void) {
 		info("EventsFile=%s", slurm_sim_conf->events_file);
 	else
 		info("EventsFile=(null)");
+
+	info("TimeAfterAllEventsDone=%ld", slurm_sim_conf->time_after_all_events_done);
 	return SLURM_SUCCESS;
 }

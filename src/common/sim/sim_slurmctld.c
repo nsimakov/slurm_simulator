@@ -6,6 +6,9 @@ extern void *sim_slurmctld_background(void *no_data);
 
 #include "src/common/sim/sim.h"
 
+extern sim_event_t * sim_last_event;
+extern sim_job_t * sim_first_active_job;
+
 
 extern slurmctld_config_t slurmctld_config;
 
@@ -156,6 +159,7 @@ extern void *sim_slurmctld_background(void *no_data)
 	//time_t start_time;
 	//int jobs_submit_count=0;
 	sim_event_t * event = NULL;
+	time_t all_done=0;
 #endif
 	DEF_TIMERS;
 
@@ -552,6 +556,20 @@ extern void *sim_slurmctld_background(void *no_data)
 			}
 			//
 			//jobs_submit_count++;
+		}
+		/*exit if everything is done*/
+		if(sim_next_event==sim_last_event &&
+				sim_first_active_job==NULL &&
+				slurm_sim_conf->time_after_all_events_done >=0) {
+			if(all_done==0) {
+				debug2("All done exit in %ld seconds", slurm_sim_conf->time_after_all_events_done);
+				all_done = time(NULL) + slurm_sim_conf->time_after_all_events_done;
+			}
+			now = time(NULL);
+			if(difftime(all_done, now) < 0) {
+				debug2("All done.");
+				exit(0);
+			}
 		}
 		/* SIM End */
 #endif
