@@ -298,7 +298,19 @@ void sim_init_events()
 	}
 
 	while ((read = getline(&line, &len, f_in)) != -1) {
-		sim_insert_event_by_cmdline(line);
+		int comment = 0;
+		int not_white_space=0;
+		for(int i=0; i < read;++i) {
+			if(!(line[i]==' ' || line[i]=='\t' || line[i]=='\n')) {
+				not_white_space += 1;
+			}
+			if(line[i]=='#' && not_white_space==0) {
+				comment = 1;
+			}
+		}
+		if(!comment && not_white_space>0) {
+			sim_insert_event_by_cmdline(line);
+		}
 	}
 	fclose(f_in);
 }
