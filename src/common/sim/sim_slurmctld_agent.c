@@ -24,17 +24,24 @@ static int sim_agent_queue_request(agent_arg_t *agent_arg_ptr)
 		launch_msg_ptr = (batch_job_launch_msg_t *)agent_arg_ptr->msg_args;
 		sim_insert_event_comp_job(launch_msg_ptr->job_id);
 		return 1;
-		break;
 	case REQUEST_KILL_TIMELIMIT:
 		kill_job = (kill_job_msg_t*)agent_arg_ptr->msg_args;
 		complete_job(kill_job->job_id);
 		return 1;
-		break;
+	case REQUEST_TERMINATE_JOB:
+		// this initiated from job_compleate by jobs finishing by themselves
+		return 1;
 	case REQUEST_NODE_REGISTRATION_STATUS:
 		debug("Sim: __wrap_agent_queue_request msg_type=%s", rpc_num2string(agent_arg_ptr->msg_type));
 		return 1;
-		break;
+	case REQUEST_PARTITION_INFO:
+		return 0;
+	case REQUEST_NODE_INFO:
+		return 0;
+	case REQUEST_SUBMIT_BATCH_JOB:
+		return 0;
 	default:
+		error("Sim: unknown for sim request will use normal slurm (msg_type=%s)", rpc_num2string(agent_arg_ptr->msg_type));
 		break;
 	}
 	return 0;

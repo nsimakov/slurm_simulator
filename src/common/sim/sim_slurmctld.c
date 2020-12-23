@@ -88,7 +88,7 @@ extern void complete_job(uint32_t job_id)
 		sim_remove_active_sim_job(job_id);
 		return;
 	}
-	/*if(IS_JOB_COMPLETING(job_ptr)){
+	if(IS_JOB_COMPLETING(job_ptr)){
 		job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
 		sim_remove_active_sim_job(job_id);
 		return;
@@ -98,12 +98,26 @@ extern void complete_job(uint32_t job_id)
 				job_id, job_state_string(job_ptr->job_state), job_ptr->job_state);
 		sim_remove_active_sim_job(job_id);
 		return;
-	}*/
+	}
 	//hostname = hostlist_shift(job_ptr->nodes);
 	// REQUEST_COMPLETE_BATCH_SCRIPT
+	/* Locks: Write job, write node, read federation */
+	slurmctld_lock_t job_write_lock1 =
+		{ .job  = WRITE_LOCK,
+		  .node = WRITE_LOCK,
+		  .fed  = READ_LOCK };
+
+	lock_slurmctld(job_write_lock1);
 	job_complete(job_ptr->job_id, job_ptr->user_id, false, false, SLURM_SUCCESS);
+	unlock_slurmctld(job_write_lock1);
+
 	// MESSAGE_EPILOG_COMPLETE
+	slurmctld_lock_t job_write_lock2 = {
+			READ_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK };
+	lock_slurmctld(job_write_lock2);
 	job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
+	unlock_slurmctld(job_write_lock2);
+
 	//free(hostname);
 	sim_remove_active_sim_job(job_id);
 }
@@ -530,7 +544,7 @@ extern void *sim_slurmctld_background(void *no_data)
 					break;
 				case SIM_COMPLETE_BATCH_SCRIPT:
 					debug2("Job %d reached its walltime", ((sim_job_t*)event->payload)->job_id);
-					//complete_job(((sim_job_t*)event->payload)->job_id);
+					complete_job(((sim_job_t*)event->payload)->job_id);
 					break;
 				default:
 					break;
