@@ -1,6 +1,8 @@
 #include "slurm/slurm.h"
 #include "src/common/log.h"
 #include "src/common/sim/sim.h"
+#include "src/common/xstring.h"
+#include "src/common/xmalloc.h"
 
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -17,7 +19,7 @@ int64_t *sim_timeval_shift = NULL;
 double *sim_timeval_scale = NULL;
 
 
-extern void init_sim_time(uint32_t start_time, double scale);
+extern void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time_to_real);
 
 static int shared_memory_size()
 {
@@ -86,6 +88,9 @@ extern int attach_shared_memory()
 }
 
 
+extern char *__progname;
+
+
 /*
  * "Constructor" function to be called before the main of each Slurm
  * entity (e.g. slurmctld, slurmd and commands).
@@ -94,6 +99,8 @@ extern int attach_shared_memory()
 void __attribute__ ((constructor)) sim_init(void)
 {
 	info("Sim: Slurm simulator init.");
+	int set_time = 0;
+	int set_time_to_real = 0;
 
 	sim_read_sim_conf();
 	sim_print_sim_conf();
@@ -105,5 +112,23 @@ void __attribute__ ((constructor)) sim_init(void)
 		exit(1);
 	};
 
-	init_sim_time(new_shared_memory*slurm_sim_conf->time_start, slurm_sim_conf->clock_scaling);
+	if(new_shared_memory==1) {
+		set_time = 1;
+	}
+	if(xstrcmp(__progname, "slurmdbd") == 0) {
+		set_time = 1;
+	}
+
+	if(slurm_sim_conf->time_start==0) {
+		set_time_to_real = 1;
+	}
+
+	init_sim_time(slurm_sim_conf->time_start, slurm_sim_conf->clock_scaling,
+			set_time, set_time_to_real);
+
+
+	char *outstr=NULL;
+	xiso8601timecat(outstr, true);
+	debug("\n: time: %s %ld %ld\n", outstr, get_real_utime(), get_sim_utime());
+	xfree(outstr);
 }

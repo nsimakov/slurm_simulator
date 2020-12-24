@@ -27,7 +27,7 @@ extern int sim_read_sim_conf(void);
 /* print simulator configuration */
 extern int sim_print_sim_conf(void);
 
-
+extern int64_t get_real_utime();
 extern int64_t get_sim_utime();
 
 

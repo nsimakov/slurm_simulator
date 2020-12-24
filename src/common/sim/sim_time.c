@@ -46,14 +46,20 @@ int (*real_nanosleep)(const struct timespec *req, struct timespec *rem) = NULL;
 //}
 //
 
-int64_t get_sim_utime()
+int64_t get_real_utime()
 {
 	struct timeval cur_real_time;
 	real_gettimeofday(&cur_real_time, NULL);
 
 	int64_t cur_real_utime = (int64_t) (cur_real_time.tv_sec) * (int64_t) 1000000 + (int64_t) (cur_real_time.tv_usec);
-	//int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
 	return cur_real_utime;
+}
+
+int64_t get_sim_utime()
+{
+	int64_t cur_real_utime = get_real_utime();
+	int64_t cur_sim_time = cur_real_utime + *sim_timeval_shift + (int64_t)((*sim_timeval_scale - 1.0)*cur_real_utime);
+	return cur_sim_time;
 }
 
 void set_sim_time(int64_t cur_sim_time, double scale)
@@ -68,6 +74,8 @@ void set_sim_time(int64_t cur_sim_time, double scale)
 	// reformatted to avoid overflow
 	*sim_timeval_shift = (int64_t)((1.0-*sim_timeval_scale)*cur_sim_time) -
 			(int64_t)(*sim_timeval_scale * (cur_real_utime - cur_sim_time));
+
+	debug2("sim_timeval_shift %ld sim_timeval_scale %f\n\n", *sim_timeval_shift, *sim_timeval_scale);
 }
 
 void set_sim_time_scale(double scale)
@@ -192,12 +200,20 @@ static void set_pointers_to_time_func()
 }
 
 
-void init_sim_time(uint32_t start_time, double scale)
+void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time_to_real)
 {
+	int64_t cur_sim_time;
+
 	determine_libc();
 	set_pointers_to_time_func();
-	if (start_time > 0) {
-		int64_t cur_sim_time = (int64_t) start_time * (int64_t) 1000000;
+
+	if (set_time_to_real > 0 || start_time==0) {
+		cur_sim_time = get_real_utime();
+	} else {
+		cur_sim_time = (int64_t) start_time * (int64_t) 1000000;
+	}
+
+	if (set_time > 0) {
 		set_sim_time(cur_sim_time, scale);
 	}
 }
