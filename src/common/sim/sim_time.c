@@ -105,9 +105,9 @@ time_t time(time_t *t)
 
 unsigned int sleep (unsigned int seconds)
 {
-	return real_sleep(seconds);
+	//return real_sleep(seconds);
 	int64_t sleep_till = get_sim_utime() + 1000000 * seconds;
-	while(get_sim_utime() <= sleep_till){
+	while(get_sim_utime() < sleep_till){
 		real_usleep(1000);
 	}
 	return 0;
