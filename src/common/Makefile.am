@@ -137,7 +137,7 @@ libcommon_la_SOURCES = 			\
 	tres_frequency.c tres_frequency.h
 
 if ENABLE_SIMULATOR
-libcommon_la_SOURCES += sim/sim.c sim/sim_conf.c sim/sim_time.c
+libcommon_la_SOURCES += sim/sim.c sim/sim_conf.c sim/sim_time.c sim/sim_users.c
 endif
 
 EXTRA_libcommon_la_SOURCES = 		\

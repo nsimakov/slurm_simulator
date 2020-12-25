@@ -20,6 +20,8 @@ double *sim_timeval_scale = NULL;
 
 
 extern void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time_to_real);
+extern int sim_read_users(void);
+extern int sim_print_users(void);
 
 static int shared_memory_size()
 {
@@ -104,6 +106,9 @@ void __attribute__ ((constructor)) sim_init(void)
 
 	sim_read_sim_conf();
 	sim_print_sim_conf();
+
+	sim_read_users();
+	sim_print_users();
 
 	int new_shared_memory = attach_shared_memory();
 

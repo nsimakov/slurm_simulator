@@ -102,7 +102,7 @@ host_triplet = @host@
 target_triplet = @target@
 noinst_PROGRAMS = libcommon.o$(EXEEXT) libeio.o$(EXEEXT) \
 	libspank.o$(EXEEXT)
-@ENABLE_SIMULATOR_TRUE@am__append_1 = sim/sim.c sim/sim_conf.c sim/sim_time.c
+@ENABLE_SIMULATOR_TRUE@am__append_1 = sim/sim.c sim/sim_conf.c sim/sim_time.c sim/sim_users.c
 subdir = src/common
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/auxdir/ax_check_compile_flag.m4 \
@@ -218,8 +218,9 @@ am__libcommon_la_SOURCES_DIST = assoc_mgr.c assoc_mgr.h \
 	half_duplex.h state_control.c state_control.h site_factor.c \
 	site_factor.h cli_filter.c cli_filter.h tres_bind.c \
 	tres_bind.h tres_frequency.c tres_frequency.h sim/sim.c \
-	sim/sim_conf.c sim/sim_time.c
-@ENABLE_SIMULATOR_TRUE@am__objects_1 = sim.lo sim_conf.lo sim_time.lo
+	sim/sim_conf.c sim/sim_time.c sim/sim_users.c
+@ENABLE_SIMULATOR_TRUE@am__objects_1 = sim.lo sim_conf.lo sim_time.lo \
+@ENABLE_SIMULATOR_TRUE@	sim_users.lo
 am_libcommon_la_OBJECTS = assoc_mgr.lo cpu_frequency.lo \
 	node_features.lo xmalloc.lo xassert.lo xstring.lo xsignal.lo \
 	strnatcmp.lo forward.lo msg_aggr.lo strlcpy.lo list.lo \
@@ -314,7 +315,8 @@ am__depfiles_remade = ./$(DEPDIR)/assoc_mgr.Plo \
 	./$(DEPDIR)/proc_args.Plo ./$(DEPDIR)/read_config.Plo \
 	./$(DEPDIR)/run_command.Plo ./$(DEPDIR)/run_in_daemon.Plo \
 	./$(DEPDIR)/sim.Plo ./$(DEPDIR)/sim_conf.Plo \
-	./$(DEPDIR)/sim_time.Plo ./$(DEPDIR)/site_factor.Plo \
+	./$(DEPDIR)/sim_time.Plo ./$(DEPDIR)/sim_users.Plo \
+	./$(DEPDIR)/site_factor.Plo \
 	./$(DEPDIR)/slurm_accounting_storage.Plo \
 	./$(DEPDIR)/slurm_acct_gather.Plo \
 	./$(DEPDIR)/slurm_acct_gather_energy.Plo \
@@ -877,6 +879,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_conf.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_time.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sim_users.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/site_factor.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurm_accounting_storage.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slurm_acct_gather.Plo@am__quote@ # am--include-marker
@@ -981,6 +984,13 @@ sim_time.lo: sim/sim_time.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='sim/sim_time.c' object='sim_time.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sim_time.lo `test -f 'sim/sim_time.c' || echo '$(srcdir)/'`sim/sim_time.c
+
+sim_users.lo: sim/sim_users.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sim_users.lo -MD -MP -MF $(DEPDIR)/sim_users.Tpo -c -o sim_users.lo `test -f 'sim/sim_users.c' || echo '$(srcdir)/'`sim/sim_users.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sim_users.Tpo $(DEPDIR)/sim_users.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='sim/sim_users.c' object='sim_users.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sim_users.lo `test -f 'sim/sim_users.c' || echo '$(srcdir)/'`sim/sim_users.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -1164,6 +1174,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/sim.Plo
 	-rm -f ./$(DEPDIR)/sim_conf.Plo
 	-rm -f ./$(DEPDIR)/sim_time.Plo
+	-rm -f ./$(DEPDIR)/sim_users.Plo
 	-rm -f ./$(DEPDIR)/site_factor.Plo
 	-rm -f ./$(DEPDIR)/slurm_accounting_storage.Plo
 	-rm -f ./$(DEPDIR)/slurm_acct_gather.Plo
@@ -1316,6 +1327,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/sim.Plo
 	-rm -f ./$(DEPDIR)/sim_conf.Plo
 	-rm -f ./$(DEPDIR)/sim_time.Plo
+	-rm -f ./$(DEPDIR)/sim_users.Plo
 	-rm -f ./$(DEPDIR)/site_factor.Plo
 	-rm -f ./$(DEPDIR)/slurm_accounting_storage.Plo
 	-rm -f ./$(DEPDIR)/slurm_acct_gather.Plo
