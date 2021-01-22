@@ -12,6 +12,8 @@ extern sim_job_t * sim_first_active_job;
 
 extern slurmctld_config_t slurmctld_config;
 
+pthread_t thread_id_event_thread;
+
 //static void *_sim_slurmctld_background(void *no_data);
 
 /*extern void __real_agent_init(void);
@@ -66,6 +68,7 @@ extern int sim_init_slurmd(int argc, char **argv);
 extern int sim_registration_engine();
 extern int sbatch_main(int argc, char **argv);
 extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job);
+extern void create_sim_events_handler ();
 
 int
 main (int argc, char **argv)
@@ -75,6 +78,8 @@ main (int argc, char **argv)
 	sim_init_slurmd(argc, argv);
 	sim_init_events();
 	sim_print_events();
+
+	create_sim_events_handler();
 
 	slurmctld_main(argc, argv);
 
@@ -125,6 +130,72 @@ extern void complete_job(uint32_t job_id)
 	sim_remove_active_sim_job(job_id);
 }
 
+
+extern void *sim_events_thread(void *no_data)
+{
+	//time_t start_time;
+	//int jobs_submit_count=0;
+	static sim_event_t * event = NULL;
+	static time_t all_done=0;
+
+	int64_t now = get_sim_utime();
+
+	while(1) {
+
+		now = get_sim_utime();
+		//start_time = now;
+
+		/* SIM Start */
+		if(sim_next_event->when - now < 0) {
+			while(sim_next_event->when - now < 0) {
+				event = sim_next_event;
+				pthread_mutex_lock(&events_mutex);
+				sim_next_event = sim_next_event->next;
+				pthread_mutex_unlock(&events_mutex);
+
+				sim_print_event(event);
+
+				switch(event->type) {
+				case SIM_NODE_REGISTRATION:
+					sim_registration_engine();
+					break;
+				case SIM_SUBMIT_BATCH_JOB:
+					submit_job((sim_event_submit_batch_job_t*)event->payload);
+					break;
+				case SIM_COMPLETE_BATCH_SCRIPT:
+					debug2("Job %d reached its walltime", ((sim_job_t*)event->payload)->job_id);
+					complete_job(((sim_job_t*)event->payload)->job_id);
+					break;
+				default:
+					break;
+				}
+			}
+			//
+			//jobs_submit_count++;
+		}
+		/*exit if everything is done*/
+		if(sim_next_event==sim_last_event &&
+				sim_first_active_job==NULL &&
+				slurm_sim_conf->time_after_all_events_done >=0) {
+			if(all_done==0) {
+				debug2("All done exit in %ld seconds", slurm_sim_conf->time_after_all_events_done);
+				all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done*1000000;
+			}
+			now = get_sim_utime();
+			if(all_done - now < 0) {
+				debug2("All done.");
+				exit(0);
+			}
+		}
+		/* SIM End */
+	}
+}
+
+extern void create_sim_events_handler ()
+{
+	slurm_thread_create(&thread_id_event_thread,
+			sim_events_thread, NULL);
+}
 /*
  * _sim_slurmctld_background - process slurmctld background activities
  *	purge defunct job records, save state, schedule jobs, and
@@ -155,12 +226,6 @@ extern void *sim_slurmctld_background(void *no_data)
 	int no_resp_msg_interval, ping_interval, purge_job_interval;
 	int i;
 	uint32_t job_limit;
-#ifdef SLURM_SIMULATOR
-	//time_t start_time;
-	//int jobs_submit_count=0;
-	sim_event_t * event = NULL;
-	time_t all_done=0;
-#endif
 	DEF_TIMERS;
 
 	/* Locks: Read config */
@@ -206,10 +271,6 @@ extern void *sim_slurmctld_background(void *no_data)
 	last_no_resp_msg_time = last_resv_time = last_ctld_bu_ping = now;
 	last_uid_update = last_reboot_msg_time = now;
 	last_acct_gather_node_time = last_ext_sensors_time = now;
-
-#ifdef SLURM_SIMULATOR
-	//start_time = now;
-#endif
 
 	last_ping_srun_time = now;
 	last_node_acct = now;
@@ -528,51 +589,6 @@ extern void *sim_slurmctld_background(void *no_data)
 			last_uid_update = now;
 			assoc_mgr_set_missing_uids();
 		}
-#ifdef SLURM_SIMULATOR
-		/* SIM Start */
-		if(difftime((time_t)sim_next_event->when/1000000, now) < 0) {
-			while(difftime((time_t)sim_next_event->when/1000000, now) < 0) {
-				event = sim_next_event;
-				pthread_mutex_lock(&events_mutex);
-				sim_next_event = sim_next_event->next;
-				pthread_mutex_unlock(&events_mutex);
-
-				sim_print_event(event);
-
-				switch(event->type) {
-				case SIM_NODE_REGISTRATION:
-					sim_registration_engine();
-					break;
-				case SIM_SUBMIT_BATCH_JOB:
-					submit_job((sim_event_submit_batch_job_t*)event->payload);
-					break;
-				case SIM_COMPLETE_BATCH_SCRIPT:
-					debug2("Job %d reached its walltime", ((sim_job_t*)event->payload)->job_id);
-					complete_job(((sim_job_t*)event->payload)->job_id);
-					break;
-				default:
-					break;
-				}
-			}
-			//
-			//jobs_submit_count++;
-		}
-		/*exit if everything is done*/
-		if(sim_next_event==sim_last_event &&
-				sim_first_active_job==NULL &&
-				slurm_sim_conf->time_after_all_events_done >=0) {
-			if(all_done==0) {
-				debug2("All done exit in %ld seconds", slurm_sim_conf->time_after_all_events_done);
-				all_done = time(NULL) + slurm_sim_conf->time_after_all_events_done;
-			}
-			now = time(NULL);
-			if(difftime(all_done, now) < 0) {
-				debug2("All done.");
-				exit(0);
-			}
-		}
-		/* SIM End */
-#endif
 
 		END_TIMER2("_slurmctld_background");
 	}

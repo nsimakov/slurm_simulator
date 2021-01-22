@@ -36,6 +36,7 @@ extern int sim_read_sim_conf(void) {
 	s_p_hashtbl_t *tbl = NULL;
 	char *conf_path = NULL;
 	struct stat buf;
+	double seconds_before_first_job;
 
 	/* Set initial values */
 	if (slurm_sim_conf == NULL) {
@@ -43,7 +44,7 @@ extern int sim_read_sim_conf(void) {
 	}
 	slurm_sim_conf->time_start = 978325200;
 	slurm_sim_conf->time_stop = 0;
-	slurm_sim_conf->seconds_before_first_job = 30;
+	slurm_sim_conf->microseconds_before_first_job = 30000000;
 
 	slurm_sim_conf->shared_memory_name = NULL;
 	slurm_sim_conf->events_file = NULL;
@@ -62,8 +63,9 @@ extern int sim_read_sim_conf(void) {
 
 		s_p_get_uint32(&slurm_sim_conf->time_start, "TimeStart", tbl);
 		s_p_get_uint32(&slurm_sim_conf->time_stop, "TimeStop", tbl);
-		s_p_get_uint32(&slurm_sim_conf->seconds_before_first_job,
-				"SecondsBeforeFirstJob", tbl);
+		if (s_p_get_double(&seconds_before_first_job, "SecondsBeforeFirstJob", tbl)) {
+			slurm_sim_conf->microseconds_before_first_job = (uint64_t)(seconds_before_first_job*1.0e6);
+		}
 		s_p_get_double(&slurm_sim_conf->clock_scaling, "ClockScaling", tbl);
 
 		if (!s_p_get_string(&slurm_sim_conf->shared_memory_name,
@@ -99,7 +101,7 @@ extern int sim_print_sim_conf(void) {
 	if (slurm_sim_conf->time_stop == 1)
 		info("    i.e. Slurm Simulator stops after last job is done.");
 
-	info("SecondsBeforeFirstJob=%u", slurm_sim_conf->seconds_before_first_job);
+	info("SecondsBeforeFirstJob=%f", slurm_sim_conf->microseconds_before_first_job/1.0e6);
 	info("ClockScaling=%f", slurm_sim_conf->clock_scaling);
 
 	if (slurm_sim_conf->shared_memory_name != NULL)

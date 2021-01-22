@@ -16,7 +16,7 @@
 //
 //} sim_event_t;
 
-int64_t simulator_start_time=0;
+extern int64_t simulator_start_time;
 
 pthread_mutex_t events_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -251,7 +251,7 @@ int sim_insert_event_by_cmdline(char *cmdline) {
 	}
 
 	if(dt != -1) {
-		event->when = simulator_start_time + dt * 1000000;
+		event->when = simulator_start_time + slurm_sim_conf->microseconds_before_first_job + dt * 1000000;
 	}
 
 
@@ -268,7 +268,6 @@ int sim_insert_event_by_cmdline(char *cmdline) {
 
 void sim_init_events()
 {
-	simulator_start_time = get_sim_utime();
 	// pad events list with small and large time to avoid extra comparison
 	sim_first_event=xcalloc(1,sizeof(*sim_first_event));
 	sim_first_event->when = 0;

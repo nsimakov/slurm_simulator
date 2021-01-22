@@ -9,7 +9,7 @@
 typedef struct slurm_sim_conf {
 	uint32_t	time_start;	/* initial starting time will be overwritten by time from first job */
 	uint32_t	time_stop;	/* final time when simulation should stop, 0-never stop, 1-stop after all jobs are done*/
-	uint32_t    seconds_before_first_job;
+	uint64_t    microseconds_before_first_job;
 	double      clock_scaling;
 	/* shared memory name, used to sync slurmdbd and slurmctrld, should be
 	 * different if multiple simulation is running at same time */

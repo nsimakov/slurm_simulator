@@ -18,6 +18,8 @@ void         * sim_shmem_data = NULL;
 int64_t *sim_timeval_shift = NULL;
 double *sim_timeval_scale = NULL;
 
+int64_t simulator_start_time=0;
+
 
 extern void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time_to_real);
 extern int sim_read_users(void);
@@ -130,6 +132,8 @@ void __attribute__ ((constructor)) sim_init(void)
 
 	init_sim_time(slurm_sim_conf->time_start, slurm_sim_conf->clock_scaling,
 			set_time, set_time_to_real);
+
+	simulator_start_time = get_sim_utime();
 
 
 	char *outstr=NULL;

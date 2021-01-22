@@ -787,9 +787,9 @@ int main(int argc, char **argv)
 #ifndef SLURM_SIMULATOR
 		_slurmctld_background(NULL);
 #else
-		if(sim_slurmctld_background(NULL) != NULL){
+		//if(sim_slurmctld_background(NULL) != NULL){
 			_slurmctld_background(NULL);
-		}
+		//}
 #endif
 
 		/* termination of controller */
