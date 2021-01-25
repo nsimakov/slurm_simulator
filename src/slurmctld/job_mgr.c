@@ -15316,6 +15316,8 @@ extern bool job_epilog_complete(uint32_t job_id, char *node_name,
 	job_record_t *job_ptr = find_job_record(job_id);
 	node_record_t *node_ptr;
 
+	debug2("job_epilog_complete for JobId=%u with node=%s and return_code=%u.",
+			      job_id, node_name, return_code);
 	if (job_ptr == NULL) {
 		debug("%s: unable to find JobId=%u for node=%s with return_code=%u.",
 		      __func__, job_id, node_name, return_code);
