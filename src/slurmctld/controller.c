@@ -281,6 +281,8 @@ int main(int argc, char **argv)
 	bool create_clustername_file;
 	char *conf_file;
 
+	info("slurmctld");
+
 	/*
 	 * Make sure we have no extra open files which
 	 * would be propagated to spawned tasks.
