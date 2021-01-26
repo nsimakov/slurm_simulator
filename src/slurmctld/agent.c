@@ -1593,7 +1593,10 @@ static void _agent_defer(void)
 
 static void _debug_message_spawn_rpc_agent(agent_arg_t *agent_arg_ptr)
 {
-	if (agent_arg_ptr->msg_type == REQUEST_TERMINATE_JOB) {
+	if ((agent_arg_ptr->msg_type == REQUEST_ABORT_JOB)    ||
+			 (agent_arg_ptr->msg_type == REQUEST_TERMINATE_JOB)  ||
+			 (agent_arg_ptr->msg_type == REQUEST_KILL_PREEMPTED) ||
+			 (agent_arg_ptr->msg_type == REQUEST_KILL_TIMELIMIT)) {
 		kill_job_msg_t * msg = (kill_job_msg_t*)agent_arg_ptr->msg_args;
 		debug2("Spawning RPC agent for msg_type %s for JobId=%d",
 			rpc_num2string(agent_arg_ptr->msg_type),
