@@ -146,6 +146,7 @@
 
 /* ignore timeouts, you must be able to handle them if
  * calling cond_timedwait instead of cond_wait */
+#ifndef SLURM_SIMULATOR
 #define slurm_cond_timedwait(cond, mutex, abstime)			\
 	do {								\
 		int err = pthread_cond_timedwait(cond, mutex, abstime);	\
@@ -155,6 +156,9 @@
 			      __FILE__, __LINE__, __func__);		\
 		}							\
 	} while (0)
+#else
+extern void slurm_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime);
+#endif
 
 #define slurm_cond_destroy(cond)					\
 	do {								\

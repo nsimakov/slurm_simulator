@@ -25,6 +25,8 @@ extern void init_sim_time(uint32_t start_time, double scale, int set_time, int s
 extern int sim_read_users(void);
 extern int sim_print_users(void);
 
+extern int64_t process_create_time_sim;
+
 static int shared_memory_size()
 {
 	return sizeof(*sim_timeval_shift) + sizeof(*sim_timeval_scale) + 16;
@@ -133,7 +135,7 @@ void __attribute__ ((constructor)) sim_init(void)
 	init_sim_time(slurm_sim_conf->time_start, slurm_sim_conf->clock_scaling,
 			set_time, set_time_to_real);
 
-	simulator_start_time = get_sim_utime();
+	simulator_start_time = process_create_time_sim;
 
 
 	char *outstr=NULL;

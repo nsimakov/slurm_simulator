@@ -69,6 +69,8 @@ extern int sim_registration_engine();
 extern int sbatch_main(int argc, char **argv);
 extern void submit_job(sim_event_submit_batch_job_t* event_submit_batch_job);
 extern void create_sim_events_handler ();
+extern int64_t process_create_time_real;
+extern int64_t process_create_time_sim;
 
 int
 main (int argc, char **argv)
@@ -157,6 +159,11 @@ extern void *sim_events_thread(void *no_data)
 
 				switch(event->type) {
 				case SIM_NODE_REGISTRATION:
+					/* time reference */
+					info("sim: process create real utime: %" PRId64 " process create sim utime: %" PRId64,
+							process_create_time_real, process_create_time_sim);
+					info("sim: current real utime: %" PRId64 ", current sim utime: %" PRId64,
+							get_real_utime(), get_sim_utime());
 					sim_registration_engine();
 					break;
 				case SIM_SUBMIT_BATCH_JOB:

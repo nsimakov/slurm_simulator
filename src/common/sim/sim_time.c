@@ -1,4 +1,6 @@
 #include "src/common/log.h"
+#include "src/common/xmalloc.h"
+
 
 #include <stdlib.h>
 #include <dlfcn.h>
@@ -8,6 +10,15 @@
 #include <stdint.h>
 
 #include <sys/time.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <stdio.h>
+
+#include <string.h>
+
+#include <inttypes.h>
 
 char *libc_loc;
 char *libc_paths[5] = {
@@ -19,6 +30,10 @@ char *libc_paths[5] = {
 
 extern int64_t *sim_timeval_shift;
 extern double *sim_timeval_scale;
+
+int64_t process_create_time_real = 0;
+int64_t process_create_time_sim = 0;
+
 
 /* Function Pointers */
 int (*real_gettimeofday)(struct timeval *,struct timezone *) = NULL;
@@ -199,10 +214,118 @@ static void set_pointers_to_time_func()
 	}
 }
 
+int find_nth_space(char *search_buffer, int space_ordinality) {
+	int jndex;
+	int space_count;
+
+	space_count = 0;
+
+	for (jndex = 0; search_buffer[jndex]; jndex++) {
+		if (search_buffer[jndex] == ' ') {
+			space_count++;
+
+			if (space_count >= space_ordinality) {
+				return jndex;
+			}
+		}
+	}
+
+	fprintf(stderr, "looking for too many spaces\n");
+
+	exit(1);
+
+}
+
+/* return process create time in microseconds */
+int64_t get_process_create_time() {
+	int field_begin;
+	int stat_fd;
+
+	const int stat_buf_size = 8192;
+	char *stat_buf = xcalloc(stat_buf_size,1);
+
+	long jiffies_per_second;
+
+	int64_t boot_time_since_epoch;
+	int64_t process_start_time_since_boot;
+
+	int64_t process_start_time_since_epoch;
+
+	ssize_t read_result;
+
+	jiffies_per_second = sysconf(_SC_CLK_TCK);
+
+
+	stat_fd = open("/proc/self/stat", O_RDONLY);
+
+	if (stat_fd < 0) {
+		fprintf(stderr, "open() fail\n");
+		exit(1);
+	}
+
+	read_result = read(stat_fd, stat_buf, stat_buf_size);
+
+	if (read_result < 0) {
+		fprintf(stderr, "read() fail\n");
+		exit(1);
+	}
+
+	if (read_result >= stat_buf_size) {
+		fprintf(stderr, "stat_buf is too small\n");
+		exit(1);
+	}
+
+	field_begin = find_nth_space(stat_buf, 21) + 1;
+
+	stat_buf[find_nth_space(stat_buf, 22)] = 0;
+
+	sscanf(stat_buf + field_begin, "%" PRId64, &process_start_time_since_boot);
+
+	close(stat_fd);
+
+	stat_fd = open("/proc/stat", O_RDONLY);
+
+	if (stat_fd < 0) {
+		fprintf(stderr, "open() fail\n");
+
+		exit(1);
+	}
+
+	read_result = read(stat_fd, stat_buf, stat_buf_size);
+
+	if (read_result < 0) {
+		fprintf(stderr, "read() fail\n");
+
+		exit(1);
+	}
+
+	if (read_result >= stat_buf_size) {
+		fprintf(stderr, "stat_buf is too small\n");
+
+		exit(1);
+	}
+
+	close(stat_fd);
+
+	field_begin = strstr(stat_buf, "btime ") - stat_buf + 6;
+	sscanf(stat_buf + field_begin, "%" PRId64, &boot_time_since_epoch);
+
+	if(jiffies_per_second<=10000) {
+		process_start_time_since_epoch = boot_time_since_epoch * 1000000
+					+ (process_start_time_since_boot * 1000000) / jiffies_per_second;
+	} else {
+		double dtmp1=((double)process_start_time_since_boot/(double)jiffies_per_second)*1.0e6;
+		process_start_time_since_epoch = boot_time_since_epoch * 1000000 + (int64_t)dtmp1;
+	}
+
+	xfree(stat_buf);
+	return process_start_time_since_epoch;
+}
 
 void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time_to_real)
 {
 	int64_t cur_sim_time;
+	int64_t cur_real_time;
 
 	determine_libc();
 	set_pointers_to_time_func();
@@ -216,4 +339,61 @@ void init_sim_time(uint32_t start_time, double scale, int set_time, int set_time
 	if (set_time > 0) {
 		set_sim_time(cur_sim_time, scale);
 	}
+
+	cur_sim_time = get_sim_utime();
+	cur_real_time = get_real_utime();
+
+	process_create_time_real = get_process_create_time();
+	process_create_time_sim = process_create_time_real + (cur_sim_time - cur_real_time);
+
+	info("sim: process create utime: %" PRId64 " process create utime: %" PRId64,
+			process_create_time_real, process_create_time_sim);
+	info("sim: current real utime: %" PRId64 ", current sim utime: %" PRId64,
+			cur_real_time, cur_sim_time);
 }
+
+void slurm_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime)
+{
+	int nanosecondswait=1000000;
+	int64_t abstime_sim = abstime->tv_sec * 1000000 + (abstime->tv_nsec/1000);
+	int64_t real_utime = get_real_utime();
+	int64_t sim_utime = get_sim_utime();
+	int64_t abstime_real = abstime_sim + (real_utime-sim_utime);
+	int64_t next_real_time;
+	struct timespec ts;
+	int err;
+	struct timespec abstime_real_ts;
+
+	abstime_real_ts.tv_sec = abstime_real/1000000;
+	abstime_real_ts.tv_nsec = (abstime_real%1000000)*1000;
+
+	do {
+		timespec_get(&ts, TIME_UTC);
+
+		ts.tv_nsec = ts.tv_nsec + nanosecondswait;
+
+		if(ts.tv_nsec >=  1000000000) {
+			ts.tv_sec += ts.tv_nsec / 1000000000;
+			ts.tv_nsec = ts.tv_nsec % 1000000000;
+		}
+
+		next_real_time = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+
+		if(next_real_time < abstime_real) {
+			next_real_time = abstime_real;
+		}
+		err = pthread_cond_timedwait(cond, mutex, &abstime_real_ts);
+		if (err && (err != ETIMEDOUT)) {
+			errno = err;
+			error("%s:%d %s: pthread_cond_timedwait(): %m",
+				  __FILE__, __LINE__, __func__);
+			break;
+		}
+		if (err==0) {
+			// i.e. got signal
+			break;
+		}
+
+	} while (get_sim_utime() < abstime_sim);
+}
+
