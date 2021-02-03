@@ -139,8 +139,34 @@ extern void *sim_events_thread(void *no_data)
 	//int jobs_submit_count=0;
 	static sim_event_t * event = NULL;
 	static time_t all_done=0;
+	char *stmp1 = xcalloc(128, sizeof(char));
+	char *stmp2 = xcalloc(128, sizeof(char));
 
-	int64_t now = get_sim_utime();
+	int64_t now;
+	int64_t cur_real_utime, cur_sim_utime;
+
+	/* time reference */
+	sleep(1);
+
+	info("sim: process create real utime: %" PRId64 ", process create sim utime: %" PRId64,
+			process_create_time_real, process_create_time_sim);
+	iso8601_from_utime(&stmp1, process_create_time_real, true);
+	iso8601_from_utime(&stmp2, process_create_time_sim, true);
+	info("sim: process create real time: %s, process create sim time: %s",
+			stmp1, stmp2);
+
+	cur_real_utime = get_real_utime();
+	cur_sim_utime = get_sim_utime();
+	info("sim: current real utime: %" PRId64 ", current sim utime: %" PRId64,
+			cur_real_utime, cur_sim_utime);
+	stmp1[0]=0;stmp2[0]=0;
+	iso8601_from_utime(&stmp1, cur_real_utime, true);
+	iso8601_from_utime(&stmp2, cur_sim_utime, true);
+	info("sim: current real utime: %s, current sim utime: %s",
+			stmp1, stmp2);
+
+
+
 
 	while(1) {
 
@@ -159,11 +185,6 @@ extern void *sim_events_thread(void *no_data)
 
 				switch(event->type) {
 				case SIM_NODE_REGISTRATION:
-					/* time reference */
-					info("sim: process create real utime: %" PRId64 " process create sim utime: %" PRId64,
-							process_create_time_real, process_create_time_sim);
-					info("sim: current real utime: %" PRId64 ", current sim utime: %" PRId64,
-							get_real_utime(), get_sim_utime());
 					sim_registration_engine();
 					break;
 				case SIM_SUBMIT_BATCH_JOB:
@@ -196,6 +217,8 @@ extern void *sim_events_thread(void *no_data)
 		}
 		/* SIM End */
 	}
+	xfree(stmp1);
+	xfree(stmp2);
 }
 
 extern void create_sim_events_handler ()

@@ -27,7 +27,7 @@ extern int sim_read_sim_conf(void) {
 	s_p_options_t options[] = {
 			{"TimeStart", S_P_UINT32 },
 			{"TimeStop", S_P_UINT32 },
-			{"SecondsBeforeFirstJob", S_P_UINT32 },
+			{"SecondsBeforeFirstJob", S_P_DOUBLE },
 			{"ClockScaling", S_P_DOUBLE },
 			{"SharedMemoryName", S_P_STRING },
 			{"EventsFile", S_P_STRING },
@@ -48,6 +48,7 @@ extern int sim_read_sim_conf(void) {
 
 	slurm_sim_conf->shared_memory_name = NULL;
 	slurm_sim_conf->events_file = NULL;
+
 
 	/* Get the slurmdbd.conf path and validate the file */
 	conf_path = get_extra_conf_path("sim.conf");

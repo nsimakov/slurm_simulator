@@ -1,6 +1,6 @@
 #include "src/common/log.h"
 #include "src/common/xmalloc.h"
-
+#include "src/common/xstring.h"
 
 #include <stdlib.h>
 #include <dlfcn.h>
@@ -395,5 +395,28 @@ void slurm_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, const st
 		}
 
 	} while (get_sim_utime() < abstime_sim);
+}
+
+void iso8601_from_utime(char **buf, uint64_t utime, bool msec)
+{
+	char p[64] = "";
+	struct timeval tv;
+	struct tm tm;
+
+
+
+	tv.tv_sec = utime / 1000000;
+	tv.tv_usec = utime % 1000000;
+
+	if (!localtime_r(&tv.tv_sec, &tm))
+		fprintf(stderr, "localtime_r() failed\n");
+
+	if (strftime(p, sizeof(p), "%Y-%m-%dT%T", &tm) == 0)
+		fprintf(stderr, "strftime() returned 0\n");
+
+	if (msec)
+		_xstrfmtcat(buf, "%s.%3.3d", p, (int)(tv.tv_usec / 1000));
+	else
+		_xstrfmtcat(buf, "%s", p);
 }
 
