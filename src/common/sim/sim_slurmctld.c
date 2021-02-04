@@ -206,8 +206,8 @@ extern void *sim_events_thread(void *no_data)
 				sim_first_active_job==NULL &&
 				slurm_sim_conf->time_after_all_events_done >=0) {
 			if(all_done==0) {
-				debug2("All done exit in %ld seconds", slurm_sim_conf->time_after_all_events_done);
-				all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done*1000000;
+				debug2("All done exit in %.3f seconds", slurm_sim_conf->time_after_all_events_done/1000000.0);
+				all_done = get_sim_utime() + slurm_sim_conf->time_after_all_events_done;
 			}
 			now = get_sim_utime();
 			if(all_done - now < 0) {

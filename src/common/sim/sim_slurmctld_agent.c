@@ -26,7 +26,8 @@ static int sim_agent_queue_request(agent_arg_t *agent_arg_ptr)
 		return 1;
 	case REQUEST_KILL_TIMELIMIT:
 		kill_job = (kill_job_msg_t*)agent_arg_ptr->msg_args;
-		complete_job(kill_job->job_id);
+		//complete_job(kill_job->job_id);
+		sim_job_requested_kill_timelimit(kill_job->job_id);
 		return 1;
 	case REQUEST_TERMINATE_JOB:
 		// this initiated from job_compleate by jobs finishing by themselves

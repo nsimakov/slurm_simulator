@@ -31,12 +31,19 @@ extern int sim_read_sim_conf(void) {
 			{"ClockScaling", S_P_DOUBLE },
 			{"SharedMemoryName", S_P_STRING },
 			{"EventsFile", S_P_STRING },
-			{"TimeAfterAllEventsDone", S_P_LONG },
+			{"TimeAfterAllEventsDone", S_P_DOUBLE },
+			{"FirstJobDelay", S_P_DOUBLE },
+			{"CompJobDelay", S_P_DOUBLE },
+			{"TimeLimitDelay", S_P_DOUBLE },
 			{ NULL } };
 	s_p_hashtbl_t *tbl = NULL;
 	char *conf_path = NULL;
 	struct stat buf;
 	double seconds_before_first_job;
+	double time_after_all_events_done;
+	double first_job_delay;
+	double comp_job_delay;
+	double timelimit_delay;
 
 	/* Set initial values */
 	if (slurm_sim_conf == NULL) {
@@ -83,7 +90,18 @@ extern int sim_read_sim_conf(void) {
 					slurm_sim_conf->events_file);
 		}
 
-		s_p_get_long(&slurm_sim_conf->time_after_all_events_done, "TimeAfterAllEventsDone", tbl);
+		if (s_p_get_double(&time_after_all_events_done, "TimeAfterAllEventsDone", tbl)) {
+			slurm_sim_conf->time_after_all_events_done = (uint64_t)(time_after_all_events_done*1.0e6);
+		}
+		if (s_p_get_double(&first_job_delay, "FirstJobDelay", tbl)) {
+			slurm_sim_conf->first_job_delay = (uint64_t)(first_job_delay*1.0e6);
+		}
+		if (s_p_get_double(&comp_job_delay, "CompJobDelay", tbl)) {
+			slurm_sim_conf->comp_job_delay = (uint64_t)(comp_job_delay*1.0e6);
+		}
+		if (s_p_get_double(&timelimit_delay, "TimeLimitDelay", tbl)) {
+			slurm_sim_conf->timelimit_delay = (uint64_t)(timelimit_delay*1.0e6);
+		}
 
 		s_p_hashtbl_destroy(tbl);
 	}
@@ -114,6 +132,10 @@ extern int sim_print_sim_conf(void) {
 	else
 		info("EventsFile=(null)");
 
-	info("TimeAfterAllEventsDone=%ld", slurm_sim_conf->time_after_all_events_done);
+	info("TimeAfterAllEventsDone=%lu", slurm_sim_conf->time_after_all_events_done);
+	info("FirstJobDelay=%ld", slurm_sim_conf->first_job_delay);
+	info("CompJobDelay=%ld", slurm_sim_conf->comp_job_delay);
+	info("TimeLimitDelay=%ld", slurm_sim_conf->timelimit_delay);
+
 	return SLURM_SUCCESS;
 }

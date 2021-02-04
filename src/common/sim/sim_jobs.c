@@ -106,4 +106,3 @@ extern sim_job_t *sim_find_active_sim_job(uint32_t job_id)
 
 	return NULL;
 }
-

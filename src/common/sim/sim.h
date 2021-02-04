@@ -15,7 +15,15 @@ typedef struct slurm_sim_conf {
 	 * different if multiple simulation is running at same time */
 	char *      shared_memory_name;
 	char *      events_file;
-	long    time_after_all_events_done;
+	uint64_t    time_after_all_events_done; /* time after all is done in usec*/
+
+	/* additional delay between first job submision, usec.
+	 * It is essentially same as microseconds_before_first_job but introduced to have one to one match of
+	 * microseconds_before_first_job with regular slurm runs and account for extra time simulator takes to spin-off*/
+	int64_t    first_job_delay;
+	int64_t    comp_job_delay; /* delay between job is complete and epilog complete, usec*/
+	int64_t    timelimit_delay; /* delay between job reaching timelimit is complete and epilog complete, usec*/
+
 } slurm_sim_conf_t;
 
 /* simulator configuration */
@@ -79,6 +87,7 @@ typedef struct sim_job {
 	uint32_t job_id;	/* job ID */
 	int64_t submit_time; /* submit_time in usec*/
 	int64_t start_time; /* start_time in usec*/
+	int requested_kill_timelimit; /* received REQUEST_KILL_TIMELIMIT */
 
 	sim_job_t *next_sim_job;
 	sim_job_t *previous_sim_job;
@@ -90,6 +99,7 @@ extern void sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit
 extern int sim_remove_active_sim_job(uint32_t job_id);
 extern sim_job_t *sim_find_active_sim_job(uint32_t job_id);
 extern void sim_print_active_jobs();
+extern void sim_job_requested_kill_timelimit(uint32_t job_id);
 
 /******************************************************************************
  * Simulated Time

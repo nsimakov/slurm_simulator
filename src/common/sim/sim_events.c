@@ -29,7 +29,8 @@ void sim_insert_event2(sim_event_t * event)
 {
 	pthread_mutex_lock(&events_mutex);
 	sim_event_t * following_event=sim_next_event;
-	while(following_event->when < event->when) {
+	/* here "<=" is important, this allows for events with same time to be queued based on their arrival*/
+	while(following_event->when <= event->when) {
 		following_event = following_event->next;
 	}
 
@@ -212,7 +213,7 @@ int sim_insert_event_by_cmdline(char *cmdline) {
 	int event_argc;
 	char **event_argv;
 	uint64_t start_time=0;
-	int dt = -1;
+	double dt = -1;
 
 	sim_event_t * event = xcalloc(1,sizeof(sim_event_t));
 	event->type=0;
@@ -224,7 +225,7 @@ int sim_insert_event_by_cmdline(char *cmdline) {
 	for(int iarg=0;iarg<event_argc;++iarg) {
 		if(xstrcmp(event_argv[iarg], "-dt")==0 && iarg+1<event_argc){
 			++iarg;
-			dt = atoi(event_argv[iarg]);
+			dt = atof(event_argv[iarg]);
 		}
 		if(xstrcmp(event_argv[iarg], "-e")==0 && iarg+1<event_argc){
 			++iarg;
@@ -237,11 +238,11 @@ int sim_insert_event_by_cmdline(char *cmdline) {
 	xfree(event_argv[0]);
 	xfree(event_argv);
 
-	if(start_time==0 && dt == -1) {
+	if(start_time==0 && dt < 0) {
 		error("Start time is not set for %s (set either -t or -dt)", cmdline);
 		return -1;
 	}
-	if(start_time!=0 && dt != -1) {
+	if(start_time!=0 && dt >= 0) {
 		error("Incorrect start time for %s (set either -t or -dt)", cmdline);
 		return -1;
 	}
@@ -250,8 +251,11 @@ int sim_insert_event_by_cmdline(char *cmdline) {
 		return -1;
 	}
 
-	if(dt != -1) {
-		event->when = simulator_start_time + slurm_sim_conf->microseconds_before_first_job + dt * 1000000;
+	if(dt >= 0) {
+		event->when = simulator_start_time + \
+				slurm_sim_conf->microseconds_before_first_job + \
+				(int64_t)(dt * 1000000.) + \
+				slurm_sim_conf->first_job_delay;
 	}
 
 
@@ -330,6 +334,29 @@ void sim_insert_event_comp_job(uint32_t job_id)
 
 	if(active_job->walltime != INT32_MAX){
 		when = active_job->start_time + active_job->walltime * 1000000;
+		when += slurm_sim_conf->comp_job_delay;
 		sim_insert_event(when, SIM_COMPLETE_BATCH_SCRIPT, (void*)active_job);
 	}
 }
+
+
+void sim_job_requested_kill_timelimit(uint32_t job_id)
+{
+	sim_job_t *sim_job = sim_find_active_sim_job(job_id);
+
+	if(sim_job==NULL) {
+		debug2("Sim job %d not found", job_id);
+		return;
+	}
+
+	if(sim_job->requested_kill_timelimit) {
+		return;
+	}
+
+	pthread_mutex_lock(&active_job_mutex);
+	sim_job->requested_kill_timelimit = 1;
+	pthread_mutex_unlock(&active_job_mutex);
+
+	sim_insert_event(get_sim_utime()+slurm_sim_conf->timelimit_delay, SIM_COMPLETE_BATCH_SCRIPT, (void*)sim_job);
+}
+
