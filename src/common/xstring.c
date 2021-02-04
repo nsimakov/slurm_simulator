@@ -213,7 +213,7 @@ void _xiso8601timecat(char **buf, bool msec)
 		fprintf(stderr, "strftime() returned 0\n");
 
 	if (msec)
-		_xstrfmtcat(buf, "%s.%3.3d", p, (int)(tv.tv_usec / 1000));
+		_xstrfmtcat(buf, "%s.%4.4d", p, (int)(tv.tv_usec / 100));
 	else
 		_xstrfmtcat(buf, "%s", p);
 }
