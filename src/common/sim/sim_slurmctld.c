@@ -89,7 +89,7 @@ main (int argc, char **argv)
 }
 
 
-extern void complete_job(uint32_t job_id)
+extern void sim_complete_job(uint32_t job_id)
 {
 	//char *hostname;
 	job_record_t *job_ptr = find_job_record(job_id);
@@ -98,6 +98,10 @@ extern void complete_job(uint32_t job_id)
 		sim_remove_active_sim_job(job_id);
 		return;
 	}
+	debug2("Processing RPC: REQUEST_COMPLETE_BATCH_SCRIPT from "
+		"uid=%u JobId=%u",
+		job_ptr->user_id, job_id);
+
 	if(IS_JOB_COMPLETING(job_ptr)){
 		job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
 		sim_remove_active_sim_job(job_id);
@@ -121,6 +125,30 @@ extern void complete_job(uint32_t job_id)
 	job_complete(job_ptr->job_id, job_ptr->user_id, false, false, SLURM_SUCCESS);
 	unlock_slurmctld(job_write_lock1);
 
+	sim_insert_event_epilog_complete(job_id);
+}
+extern void sim_epilog_complete(uint32_t job_id)
+{
+	//char *hostname;
+	job_record_t *job_ptr = find_job_record(job_id);
+	if(job_ptr==NULL){
+		error("Can not find record for %d job!", job_id);
+		sim_remove_active_sim_job(job_id);
+		return;
+	}
+
+	if(IS_JOB_COMPLETING(job_ptr)){
+		job_epilog_complete(job_ptr->job_id, "localhost", SLURM_SUCCESS);
+		sim_remove_active_sim_job(job_id);
+		return;
+	}
+	if(!IS_JOB_RUNNING(job_ptr)){
+		error("Can not stop %d job, it is not running (%s (%d))!",
+				job_id, job_state_string(job_ptr->job_state), job_ptr->job_state);
+		sim_remove_active_sim_job(job_id);
+		return;
+	}
+
 	// MESSAGE_EPILOG_COMPLETE
 	slurmctld_lock_t job_write_lock2 = {
 			READ_LOCK, WRITE_LOCK, WRITE_LOCK, NO_LOCK, NO_LOCK };
@@ -131,7 +159,6 @@ extern void complete_job(uint32_t job_id)
 	//free(hostname);
 	sim_remove_active_sim_job(job_id);
 }
-
 
 extern void *sim_events_thread(void *no_data)
 {
@@ -191,9 +218,10 @@ extern void *sim_events_thread(void *no_data)
 					submit_job((sim_event_submit_batch_job_t*)event->payload);
 					break;
 				case SIM_COMPLETE_BATCH_SCRIPT:
-					debug2("Job %d reached its walltime", ((sim_job_t*)event->payload)->job_id);
-					complete_job(((sim_job_t*)event->payload)->job_id);
+					sim_complete_job(((sim_job_t*)event->payload)->job_id);
 					break;
+				case SIM_EPILOG_COMPLETE:
+					sim_epilog_complete(((sim_job_t*)event->payload)->job_id);
 				default:
 					break;
 				}

@@ -320,22 +320,22 @@ void sim_init_events()
 
 void sim_insert_event_comp_job(uint32_t job_id)
 {
-	sim_job_t *active_job = sim_find_active_sim_job(job_id);
-	if(active_job==NULL) {
+	sim_job_t *sim_job = sim_find_active_sim_job(job_id);
+	if(sim_job==NULL) {
 		error("Sim: Can not find job %d among active sim jobs!", job_id);
 		return;
 	}
 	int64_t when;
-	if(active_job->start_time == 0){
+	if(sim_job->start_time == 0){
 		pthread_mutex_lock(&active_job_mutex);
-		active_job->start_time = get_sim_utime();
+		sim_job->start_time = get_sim_utime();
 		pthread_mutex_unlock(&active_job_mutex);
 	}
 
-	if(active_job->walltime != INT32_MAX){
-		when = active_job->start_time + active_job->walltime * 1000000;
-		when += slurm_sim_conf->comp_job_delay;
-		sim_insert_event(when, SIM_COMPLETE_BATCH_SCRIPT, (void*)active_job);
+	if(sim_job->walltime != INT32_MAX){
+		when = sim_job->start_time + sim_job->walltime * 1000000;
+		//when += slurm_sim_conf->comp_job_delay;
+		sim_insert_event(when, SIM_COMPLETE_BATCH_SCRIPT, (void*)sim_job);
 	}
 }
 
@@ -360,3 +360,19 @@ void sim_job_requested_kill_timelimit(uint32_t job_id)
 	sim_insert_event(get_sim_utime()+slurm_sim_conf->timelimit_delay, SIM_COMPLETE_BATCH_SCRIPT, (void*)sim_job);
 }
 
+void sim_insert_event_epilog_complete(uint32_t job_id)
+{
+	sim_job_t *sim_job = sim_find_active_sim_job(job_id);
+	if(sim_job==NULL) {
+		error("Sim: Can not find job %d among active sim jobs!", job_id);
+		return;
+	}
+	if(sim_job->comp_job) {
+		return;
+	}
+	pthread_mutex_lock(&active_job_mutex);
+	sim_job->comp_job = 1;
+	pthread_mutex_unlock(&active_job_mutex);
+
+	sim_insert_event(get_sim_utime()+slurm_sim_conf->comp_job_delay, SIM_EPILOG_COMPLETE, (void*)sim_job);
+}

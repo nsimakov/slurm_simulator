@@ -48,6 +48,7 @@ typedef enum {
 	SIM_NODE_REGISTRATION = 1001,
 	SIM_SUBMIT_BATCH_JOB,
 	SIM_COMPLETE_BATCH_SCRIPT,
+	SIM_EPILOG_COMPLETE,
 	SIM_CANCEL_JOB,
 } sim_event_type_t;
 
@@ -74,6 +75,8 @@ extern void sim_print_event(sim_event_t * event);
 
 extern void sim_insert_event(int64_t when, int type, void *payload);
 extern void sim_insert_event_comp_job(uint32_t job_id);
+extern void sim_insert_event_epilog_complete(uint32_t job_id);
+extern void sim_job_requested_kill_timelimit(uint32_t job_id);
 
 extern pthread_mutex_t events_mutex;
 
@@ -87,6 +90,7 @@ typedef struct sim_job {
 	uint32_t job_id;	/* job ID */
 	int64_t submit_time; /* submit_time in usec*/
 	int64_t start_time; /* start_time in usec*/
+	int comp_job; /*job is complete and epilog is scheduled*/
 	int requested_kill_timelimit; /* received REQUEST_KILL_TIMELIMIT */
 
 	sim_job_t *next_sim_job;
@@ -99,7 +103,7 @@ extern void sim_insert_sim_active_job(sim_event_submit_batch_job_t* event_submit
 extern int sim_remove_active_sim_job(uint32_t job_id);
 extern sim_job_t *sim_find_active_sim_job(uint32_t job_id);
 extern void sim_print_active_jobs();
-extern void sim_job_requested_kill_timelimit(uint32_t job_id);
+
 
 /******************************************************************************
  * Simulated Time

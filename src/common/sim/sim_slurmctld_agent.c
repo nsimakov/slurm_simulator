@@ -4,7 +4,7 @@ static int sim_agent_queue_request(agent_arg_t *agent_arg_ptr);
 #include "src/slurmctld/agent.c"
 #include "src/common/sim/sim.h"
 
-extern void complete_job(uint32_t job_id);
+extern void sim_complete_job(uint32_t job_id);
 
 static int sim_agent_queue_request(agent_arg_t *agent_arg_ptr)
 {
