@@ -33,7 +33,7 @@ typedef struct slurm_sim_conf {
 	double      bf_model_real_power;
 	double      bf_model_sim_prefactor;
 	double      bf_model_sim_power;
-	double      scaling_factor;
+	double      speed_scaling;
 	char *      run_id;
 	/* shared memory name, used to sync slurmdbd and slurmctrld, should be
 	 * different if multiple simulation is running at same time */

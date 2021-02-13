@@ -46,7 +46,7 @@ extern int sim_read_sim_conf(void)
 		{"squeueFileOut", S_P_STRING},
 		{"SimStats", S_P_STRING},
 		{"RunID", S_P_STRING},
-		{"scalingFactor", S_P_DOUBLE},
+		{"SpeedScale", S_P_DOUBLE},
 		{"bf_model_real_prefactor", S_P_DOUBLE},
 		{"bf_model_real_power", S_P_DOUBLE},
 		{"bf_model_sim_prefactor", S_P_DOUBLE},
@@ -79,7 +79,7 @@ extern int sim_read_sim_conf(void)
 	slurm_sim_conf->squeue_file_out=NULL;
 	slurm_sim_conf->run_id=NULL;
 
-	slurm_sim_conf->scaling_factor=1.0;
+	slurm_sim_conf->speed_scaling=1.0;
 	slurm_sim_conf->bf_model_real_prefactor=1.0;
 	slurm_sim_conf->bf_model_real_power=1.0;
 	slurm_sim_conf->bf_model_sim_prefactor=1.0;
@@ -136,25 +136,32 @@ extern int sim_read_sim_conf(void)
 
 		s_p_get_string(&slurm_sim_conf->run_id,"RunID",tbl);
 
-		int scaling_factor_is_set=s_p_get_double(&slurm_sim_conf->scaling_factor, "scalingFactor", tbl);
+		int scaling_factor_is_set=s_p_get_double(&slurm_sim_conf->speed_scaling, "SpeedScale", tbl);
 		int bf_model_scaling_is_set=0;
 		bf_model_scaling_is_set+=s_p_get_double(&slurm_sim_conf->bf_model_real_prefactor, "bf_model_real_prefactor", tbl);
 		bf_model_scaling_is_set+=s_p_get_double(&slurm_sim_conf->bf_model_real_power, "bf_model_real_power", tbl);
 		bf_model_scaling_is_set+=s_p_get_double(&slurm_sim_conf->bf_model_sim_prefactor, "bf_model_sim_prefactor", tbl);
 		bf_model_scaling_is_set+=s_p_get_double(&slurm_sim_conf->bf_model_sim_power, "bf_model_sim_power", tbl);
 
+#ifdef BFMODEL_POW
+		if(bf_model_scaling_is_set>0){
+			fatal("This slurm simulator compiled for use with SpeedScale "
+				  "To use backfill power model for time scaling recompile with BFMODEL_POW");
+		}
+#else
 		if(scaling_factor_is_set>0 && bf_model_scaling_is_set>0){
-			fatal("scalingFactor is set in sim.conf as well as "
+			fatal("SpeedScale is set in sim.conf as well as "
 				  "bf_model_real_prefactor, bf_model_real_power, bf_model_sim_prefactor and bf_model_sim_power are set."
 		          "This two parameters set are exclusive!");
 		}
+#endif
 		if(scaling_factor_is_set>0){
-			slurm_sim_conf->bf_model_real_prefactor=slurm_sim_conf->scaling_factor;
+			slurm_sim_conf->bf_model_real_prefactor=slurm_sim_conf->speed_scaling;
 			slurm_sim_conf->bf_model_real_power=1.0;
 			slurm_sim_conf->bf_model_sim_prefactor=1.0;
 			slurm_sim_conf->bf_model_sim_power=1.0;
 		}else{
-			slurm_sim_conf->scaling_factor=-1.0;
+			slurm_sim_conf->speed_scaling=-1.0;
 		}
 
 		s_p_hashtbl_destroy(tbl);
@@ -228,8 +235,8 @@ extern int sim_print_sim_conf(void)
 	else
 		info("RunID=(null)");
 
-	if(slurm_sim_conf->scaling_factor>0.0){
-		info("scalingFactor=%f",slurm_sim_conf->scaling_factor);
+	if(slurm_sim_conf->speed_scaling>0.0){
+		info("scalingFactor=%f",slurm_sim_conf->speed_scaling);
 	}else{
 		info("bf_model_real_prefactor=%f",slurm_sim_conf->bf_model_real_prefactor);
 		info("bf_model_real_power=%f",slurm_sim_conf->bf_model_real_power);
